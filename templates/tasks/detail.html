@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ task.task_number }} — 事項詳情{% endblock %}
+{% block page_title %}事項詳情{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+  <i class="fas fa-edit me-1"></i>編輯
+</a>
+{% if current_user.is_manager %}
+<form method="POST" action="{{ url_for('tasks.delete_task', task_id=task.id) }}"
+      onsubmit="return confirm('確認刪除此事項？');" class="d-inline">
+  <button type="submit" class="btn btn-sm btn-outline-danger">
+    <i class="fas fa-trash me-1"></i>刪除
+  </button>
+</form>
+{% endif %}
+<a href="{{ url_for('tasks.index') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left me-1"></i>返回
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- ── Left: Task Info ── -->
+  <div class="col-lg-4">
+    <div class="section-card">
+      <h6><i class="fas fa-info-circle me-2 text-primary"></i>事項資料</h6>
+      <table class="table table-sm mb-0" style="font-size:13px;">
+        <tr><td class="text-muted fw-semibold" style="width:45%;white-space:nowrap;">事項編號</td>
+            <td class="task-num">{{ task.task_number }}</td></tr>
+        <tr><td class="text-muted fw-semibold">屋苑</td>
+            <td>{{ task.estate.display_name }}</td></tr>
+        <tr><td class="text-muted fw-semibold">事項種類</td>
+            <td>{{ task.category.name_zh if task.category else '—' }}</td></tr>
+        <tr><td class="text-muted fw-semibold">事項狀況</td>
+            <td>
+              {% if task.status_obj %}
+              <span class="badge bg-{{ task.status_obj.color }}">{{ task.status_obj.name_zh }}</span>
+              {% else %}—{% endif %}
+            </td></tr>
+        <tr><td class="text-muted fw-semibold">新增日期</td>
+            <td>{{ task.created_at.strftime('%Y-%m-%d') }}</td></tr>
+        <tr><td class="text-muted fw-semibold">預計完成</td>
+            <td>
+              {% if task.expected_done %}
+              <span class="{% if task.is_overdue %}text-danger fw-bold{% endif %}">
+                {{ task.expected_done.strftime('%Y-%m-%d') }}
+                {% if task.is_overdue %}<i class="fas fa-exclamation-triangle ms-1"></i>{% endif %}
+              </span>
+              {% else %}—{% endif %}
+            </td></tr>
+        <tr><td class="text-muted fw-semibold">跟進人</td>
+            <td>{{ task.assignee.display_name if task.assignee else '—' }}</td></tr>
+        <tr><td class="text-muted fw-semibold">建立人</td>
+            <td>{{ task.created_by.display_name if task.created_by else '—' }}</td></tr>
+        {% if task.completed_at %}
+        <tr><td class="text-muted fw-semibold">完成日期</td>
+            <td>{{ task.completed_at.strftime('%Y-%m-%d') }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+
+    <!-- Quick Status Update -->
+    <div class="section-card mt-3">
+      <h6><i class="fas fa-exchange-alt me-2 text-warning"></i>快速更新狀況</h6>
+      <div class="d-flex flex-wrap gap-2">
+        {% for s in statuses %}
+        <button onclick="updateStatus({{ task.id }}, {{ s.id }}, this)"
+                class="btn btn-sm {% if task.status_id == s.id %}btn-{{ s.color }}{% else %}btn-outline-{{ s.color }}{% endif %}"
+                style="font-size:12px;">
+          {{ s.name_zh }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if task.description %}
+    <div class="section-card mt-3">
+      <h6><i class="fas fa-align-left me-2 text-primary"></i>詳細說明</h6>
+      <p style="font-size:13px;white-space:pre-wrap;">{{ task.description }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Right: Logs ── -->
+  <div class="col-lg-8">
+
+    <!-- Add Log Form -->
+    <div class="section-card mb-3">
+      <h6><i class="fas fa-plus-circle me-2 text-success"></i>新增跟進記錄</h6>
+      <form method="POST" action="{{ url_for('tasks.add_log', task_id=task.id) }}">
+        <div class="row g-2 mb-2">
+          <div class="col-md-4">
+            <label class="form-label" style="font-size:12px;">跟進日期</label>
+            <input type="text" name="log_date" class="form-control form-control-sm datepicker"
+                   value="{{ now.strftime('%Y-%m-%d') }}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" style="font-size:12px;">同時更新狀況（可選）</label>
+            <select name="new_status_id" class="form-select form-select-sm">
+              <option value="">— 不更改 —</option>
+              {% for s in statuses %}
+              <option value="{{ s.id }}" {% if task.status_id == s.id %}selected{% endif %}>
+                {{ s.name_zh }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:12px;">跟進記錄內容 <span class="text-danger">*</span></label>
+          <textarea name="content" class="form-control form-control-sm" rows="3"
+                    placeholder="請輸入跟進記錄…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-success btn-sm">
+          <i class="fas fa-save me-1"></i>新增記錄
+        </button>
+      </form>
+    </div>
+
+    <!-- Log Timeline -->
+    <div class="section-card">
+      <h6><i class="fas fa-history me-2 text-primary"></i>跟進記錄 ({{ logs|length }})</h6>
+
+      {% if logs %}
+      <div class="log-timeline">
+        {% for log in logs | sort(attribute='log_date') %}
+        <div class="log-entry" id="log-{{ log.id }}">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="log-date">
+              <i class="fas fa-calendar me-1"></i>{{ log.log_date.strftime('%Y年%m月%d日') }}
+              {% if log.author %}<span class="ms-2 text-secondary">— {{ log.author.display_name }}</span>{% endif %}
+            </span>
+            {% if current_user.is_manager or log.author_id == current_user.id %}
+            <div class="d-flex gap-1">
+              <button class="btn btn-xs btn-outline-secondary" style="font-size:10px;padding:1px 6px;"
+                      onclick="toggleEditLog({{ log.id }})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <form method="POST" action="{{ url_for('tasks.delete_log', log_id=log.id) }}"
+                    onsubmit="return confirm('確認刪除此記錄？');" class="d-inline">
+                <button type="submit" class="btn btn-xs btn-outline-danger" style="font-size:10px;padding:1px 6px;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          <div class="log-content" id="log-content-{{ log.id }}">{{ log.content }}</div>
+          <!-- Inline edit form (hidden by default) -->
+          <div id="log-edit-{{ log.id }}" style="display:none;" class="mt-2">
+            <form method="POST" action="{{ url_for('tasks.edit_log', log_id=log.id) }}">
+              <div class="row g-2 mb-1">
+                <div class="col-md-3">
+                  <input type="text" name="log_date" class="form-control form-control-sm datepicker"
+                         value="{{ log.log_date.strftime('%Y-%m-%d') }}">
+                </div>
+              </div>
+              <textarea name="content" class="form-control form-control-sm mb-1" rows="2">{{ log.content }}</textarea>
+              <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-xs btn-success" style="font-size:11px;">儲存</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary" style="font-size:11px;"
+                        onclick="toggleEditLog({{ log.id }})">取消</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-muted text-center py-3">
+        <i class="fas fa-clipboard-list fa-2x mb-2 d-block opacity-25"></i>
+        暫無跟進記錄
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleEditLog(logId) {
+  const form = document.getElementById('log-edit-' + logId);
+  const content = document.getElementById('log-content-' + logId);
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    content.style.display = 'none';
+  } else {
+    form.style.display = 'none';
+    content.style.display = 'block';
+  }
+}
+
+function updateStatus(taskId, statusId, btn) {
+  fetch(`/tasks/${taskId}/status`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status_id: statusId})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) location.reload();
+  });
+}
+</script>
+{% endblock %}

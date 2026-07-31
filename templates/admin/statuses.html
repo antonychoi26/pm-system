@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}事項狀況管理{% endblock %}
+{% block page_title %}事項狀況管理{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="section-card p-0" style="overflow:hidden;">
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0">
+          <thead>
+            <tr><th>#</th><th>名稱</th><th>顏色</th><th>終止狀態</th><th>狀態</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for s in statuses %}
+          <tr {% if not s.is_active %}class="opacity-50"{% endif %}>
+            <td class="text-muted">{{ s.sort_order }}</td>
+            <td>
+              <span class="badge bg-{{ s.color }} badge-status">{{ s.name_zh }}</span>
+            </td>
+            <td><small class="text-muted">{{ s.color }}</small></td>
+            <td>
+              {% if s.is_terminal %}
+              <span class="badge bg-dark" style="font-size:10px;">
+                <i class="fas fa-eye-slash me-1"></i>隱藏於報告
+              </span>
+              {% else %}
+              <span class="text-muted" style="font-size:11px;">—</span>
+              {% endif %}
+            </td>
+            <td><span class="badge {% if s.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+              {% if s.is_active %}啟用{% else %}停用{% endif %}</span></td>
+            <td>
+              <button class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;"
+                      onclick="fillEditForm({{ s.id }}, '{{ s.name_zh }}', '{{ s.name_en or '' }}', '{{ s.color }}', {{ s.is_terminal | lower }})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <form method="POST" action="{{ url_for('admin.toggle_status', status_id=s.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-xs {% if s.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                        style="font-size:10px;padding:2px 7px;">
+                  {% if s.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="mt-2">
+      <small class="text-muted">
+        <i class="fas fa-info-circle me-1"></i>
+        <strong>終止狀態</strong>：設為終止狀態的事項，預設不顯示於報告中（相當於原「已完成」功能）。
+      </small>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="section-card">
+      <h6 id="formTitle"><i class="fas fa-plus me-2 text-success"></i>新增事項狀況</h6>
+      <form method="POST" action="{{ url_for('admin.save_status') }}" id="statusForm">
+        <input type="hidden" name="status_id" id="statusId" value="">
+        <div class="mb-3">
+          <label class="form-label">中文名稱 <span class="text-danger">*</span></label>
+          <input type="text" name="name_zh" id="stNameZh" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">英文名稱</label>
+          <input type="text" name="name_en" id="stNameEn" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">顏色標籤</label>
+          <select name="color" id="stColor" class="form-select form-select-sm">
+            <option value="info">藍色 (info) — 新增</option>
+            <option value="warning">黃色 (warning) — 跟進中</option>
+            <option value="success">綠色 (success) — 完成</option>
+            <option value="secondary">灰色 (secondary) — 已完成</option>
+            <option value="danger">紅色 (danger)</option>
+            <option value="primary">深藍 (primary)</option>
+            <option value="dark">黑色 (dark)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_terminal" id="isTerminal">
+            <label class="form-check-label" for="isTerminal" style="font-size:13px;">
+              設為終止狀態（隱藏於報告）
+            </label>
+          </div>
+          <small class="text-muted">勾選後，此狀態的事項預設不出現在週報中</small>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save me-1"></i>儲存
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetForm()">重置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillEditForm(id, nameZh, nameEn, color, isTerminal) {
+  document.getElementById('statusId').value = id;
+  document.getElementById('stNameZh').value = nameZh;
+  document.getElementById('stNameEn').value = nameEn;
+  document.getElementById('stColor').value = color;
+  document.getElementById('isTerminal').checked = isTerminal;
+  document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit me-2 text-primary"></i>編輯事項狀況';
+  document.getElementById('statusForm').scrollIntoView({behavior:'smooth'});
+}
+function resetForm() {
+  document.getElementById('statusId').value = '';
+  document.getElementById('stNameZh').value = '';
+  document.getElementById('stNameEn').value = '';
+  document.getElementById('stColor').value = 'info';
+  document.getElementById('isTerminal').checked = false;
+  document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus me-2 text-success"></i>新增事項狀況';
+}
+</script>
+{% endblock %}

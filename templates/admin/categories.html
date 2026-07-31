@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}事項種類管理{% endblock %}
+{% block page_title %}事項種類管理{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="section-card p-0" style="overflow:hidden;">
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0">
+          <thead>
+            <tr><th>#</th><th>中文名稱</th><th>英文名稱</th><th>狀態</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for c in categories %}
+          <tr {% if not c.is_active %}class="opacity-50"{% endif %}>
+            <td class="text-muted">{{ c.sort_order }}</td>
+            <td class="fw-semibold">{{ c.name_zh }}</td>
+            <td class="text-muted">{{ c.name_en or '—' }}</td>
+            <td><span class="badge {% if c.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+              {% if c.is_active %}啟用{% else %}停用{% endif %}</span></td>
+            <td>
+              <button class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;"
+                      onclick="fillEditForm({{ c.id }}, '{{ c.name_zh }}', '{{ c.name_en or '' }}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <form method="POST" action="{{ url_for('admin.toggle_category', cat_id=c.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-xs {% if c.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                        style="font-size:10px;padding:2px 7px;">
+                  {% if c.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="section-card">
+      <h6 id="formTitle"><i class="fas fa-plus me-2 text-success"></i>新增事項種類</h6>
+      <form method="POST" action="{{ url_for('admin.save_category') }}" id="catForm">
+        <input type="hidden" name="cat_id" id="catId" value="">
+        <div class="mb-3">
+          <label class="form-label">中文名稱 <span class="text-danger">*</span></label>
+          <input type="text" name="name_zh" id="catNameZh" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">英文名稱</label>
+          <input type="text" name="name_en" id="catNameEn" class="form-control">
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save me-1"></i>儲存
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetForm()">重置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillEditForm(id, nameZh, nameEn) {
+  document.getElementById('catId').value = id;
+  document.getElementById('catNameZh').value = nameZh;
+  document.getElementById('catNameEn').value = nameEn;
+  document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit me-2 text-primary"></i>編輯事項種類';
+  document.getElementById('catForm').scrollIntoView({behavior:'smooth'});
+}
+function resetForm() {
+  document.getElementById('catId').value = '';
+  document.getElementById('catNameZh').value = '';
+  document.getElementById('catNameEn').value = '';
+  document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus me-2 text-success"></i>新增事項種類';
+}
+</script>
+{% endblock %}

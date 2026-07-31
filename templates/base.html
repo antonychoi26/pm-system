@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}物業管理工作清單系統{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --accent:  #2e86de;
+    --sidebar-w: 250px;
+  }
+  body { background: #f0f2f5; font-family: 'Segoe UI', 'PingFang TC', sans-serif; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w); min-height: 100vh;
+    background: linear-gradient(180deg, #1a3a5c 0%, #0f2742 100%);
+    position: fixed; top: 0; left: 0; z-index: 1040;
+    display: flex; flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+  #sidebar .brand {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  #sidebar .brand h5 { color: #fff; font-size: 14px; margin:0; }
+  #sidebar .brand small { color: rgba(255,255,255,0.5); font-size: 11px; }
+  #sidebar .nav-section {
+    color: rgba(255,255,255,0.4); font-size: 10px; font-weight:700;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 16px 16px 4px;
+  }
+  #sidebar .nav-link {
+    color: rgba(255,255,255,0.75); padding: 9px 16px;
+    font-size: 13.5px; border-radius: 6px; margin: 1px 8px;
+    transition: all 0.2s;
+  }
+  #sidebar .nav-link:hover, #sidebar .nav-link.active {
+    background: rgba(46,134,222,0.3); color: #fff;
+  }
+  #sidebar .nav-link i { width: 20px; text-align:center; margin-right: 6px; }
+
+  /* ── Main content ── */
+  #main-content {
+    margin-left: var(--sidebar-w);
+    padding: 0;
+    min-height: 100vh;
+    transition: margin 0.3s ease;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: #fff; padding: 12px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    display: flex; align-items:center; justify-content:space-between;
+    position: sticky; top:0; z-index:100;
+  }
+  .topbar .page-title { font-size:18px; font-weight:600; color:#1a3a5c; margin:0; }
+
+  /* ── Cards ── */
+  .card { border:none; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  .stat-card { border-radius:12px; padding:20px; color:#fff; transition:transform 0.2s; }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card .stat-number { font-size:36px; font-weight:700; line-height:1; }
+  .stat-card .stat-label  { font-size:13px; opacity:0.9; margin-top:4px; }
+
+  /* ── Status badges ── */
+  .badge-status { font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600; }
+
+  /* ── Table ── */
+  .table-pm { font-size:13px; }
+  .table-pm th { background:#f8f9fa; font-weight:600; color:#495057; border-top:none; white-space:nowrap; }
+  .table-pm td { vertical-align:middle; }
+  .table-pm tr:hover { background:#f8fbff; }
+
+  /* ── Task number ── */
+  .task-num { font-family:monospace; font-weight:600; color:#1a3a5c; font-size:13px; }
+
+  /* ── Kanban ── */
+  .kanban-col { min-width: 260px; background:#f8f9fa; border-radius:10px; padding:12px; }
+  .kanban-col .col-header { font-weight:700; font-size:13px; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid; }
+  .kanban-card { background:#fff; border-radius:8px; padding:12px; margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.06); cursor:pointer; }
+  .kanban-card:hover { box-shadow:0 3px 10px rgba(0,0,0,0.1); }
+
+  /* ── Log timeline ── */
+  .log-timeline { border-left: 3px solid #dee2e6; padding-left: 20px; margin-left: 10px; }
+  .log-entry { position:relative; margin-bottom:16px; }
+  .log-entry::before {
+    content:''; position:absolute; left:-26px; top:6px;
+    width:10px; height:10px; border-radius:50%;
+    background:#2e86de; border:2px solid #fff;
+    box-shadow:0 0 0 2px #2e86de;
+  }
+  .log-entry .log-date { font-size:11px; color:#6c757d; font-weight:600; }
+  .log-entry .log-content { background:#f8f9fa; border-radius:8px; padding:10px 14px; margin-top:4px; font-size:13px; }
+
+  /* ── Forms ── */
+  .form-label { font-weight:600; font-size:13px; color:#495057; }
+  .form-control, .form-select { font-size:13px; }
+  .section-card { background:#fff; border-radius:12px; padding:20px 24px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:20px; }
+  .section-card h6 { color:#1a3a5c; font-weight:700; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #f0f0f0; }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.show { transform: translateX(0); }
+    #main-content { margin-left: 0; }
+    .stat-card .stat-number { font-size:28px; }
+  }
+
+  /* ── Overdue highlight ── */
+  .overdue-row td { background:#fff5f5 !important; }
+  .overdue-badge { color:#dc3545; font-size:11px; font-weight:700; }
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<!-- ── Sidebar ───────────────────────────────────────────────── -->
+<nav id="sidebar">
+  <div class="brand">
+    <div class="d-flex align-items-center gap-2">
+      <i class="fas fa-building text-info fs-5"></i>
+      <div>
+        <h5>物業管理</h5>
+        <small>工作清單系統</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-2 flex-grow-1 overflow-auto">
+    <div class="nav-section">主要功能</div>
+    <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+      <i class="fas fa-tachometer-alt"></i> 儀表板
+    </a>
+    <a href="{{ url_for('tasks.index') }}" class="nav-link {% if request.blueprint == 'tasks' %}active{% endif %}">
+      <i class="fas fa-tasks"></i> 工作清單
+    </a>
+    <a href="{{ url_for('tasks.new_task') }}" class="nav-link">
+      <i class="fas fa-plus-circle"></i> 新增事項
+    </a>
+
+    <div class="nav-section">報告</div>
+    <a href="{{ url_for('reports.index') }}" class="nav-link {% if request.blueprint == 'reports' %}active{% endif %}">
+      <i class="fas fa-file-alt"></i> 生成報告
+    </a>
+    {% if current_user.is_manager %}
+    <a href="{{ url_for('reports.import_excel') }}" class="nav-link">
+      <i class="fas fa-file-import"></i> 匯入數據
+    </a>
+    {% endif %}
+
+    {% if current_user.is_manager %}
+    <div class="nav-section">管理設定</div>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin.estates') }}" class="nav-link {% if request.endpoint == 'admin.estates' %}active{% endif %}">
+      <i class="fas fa-city"></i> 屋苑管理
+    </a>
+    {% endif %}
+    <a href="{{ url_for('admin.users') }}" class="nav-link {% if request.endpoint in ['admin.users','admin.new_user','admin.edit_user'] %}active{% endif %}">
+      <i class="fas fa-users"></i> 用戶管理
+    </a>
+    <a href="{{ url_for('admin.categories') }}" class="nav-link {% if request.endpoint == 'admin.categories' %}active{% endif %}">
+      <i class="fas fa-tags"></i> 事項種類
+    </a>
+    <a href="{{ url_for('admin.statuses') }}" class="nav-link {% if request.endpoint == 'admin.statuses' %}active{% endif %}">
+      <i class="fas fa-stream"></i> 事項狀況
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- User info at bottom -->
+  <div style="border-top:1px solid rgba(255,255,255,0.1); padding:12px 16px;">
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle bg-accent d-flex align-items-center justify-content-center"
+           style="width:32px;height:32px;background:#2e86de;flex-shrink:0;">
+        <span style="color:#fff;font-size:13px;font-weight:700;">
+          {{ current_user.display_name[0] }}
+        </span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ current_user.display_name }}
+        </div>
+        <div style="color:rgba(255,255,255,0.5);font-size:10px;">
+          {% if current_user.is_admin %}管理員{% elif current_user.role == 'manager' %}主管{% else %}員工{% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-1">
+        <a href="{{ url_for('auth.profile') }}" class="text-white-50" title="個人設定" style="font-size:13px;">
+          <i class="fas fa-cog"></i>
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="text-white-50" title="登出" style="font-size:13px;">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────────────── -->
+<div id="main-content">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-sm btn-outline-secondary d-md-none" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+      </button>
+      <h6 class="page-title">{% block page_title %}{% endblock %}</h6>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="px-4 pt-3">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="border-radius:10px;font-size:13px;">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Page content -->
+  <div class="px-4 py-3">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+{% else %}
+<div class="px-0 py-0">
+{% block unauthenticated_content %}{% endblock %}
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Flatpickr defaults
+  flatpickr.localize(flatpickr.l10ns.zh_tw);
+  document.querySelectorAll('.datepicker').forEach(el => {
+    flatpickr(el, { dateFormat: 'Y-m-d', allowInput: true });
+  });
+
+  // Sidebar toggle (mobile)
+  const tog = document.getElementById('sidebarToggle');
+  if (tog) tog.addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('show');
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

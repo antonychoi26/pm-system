@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}儀表板{% endblock %}
+{% block page_title %}儀表板{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size:12px;">
+  <i class="fas fa-calendar-alt me-1"></i>{{ today.strftime('%Y年%m月%d日') }}
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Summary Cards ─────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1a3a5c,#2e86de);">
+      <div class="stat-number">{{ total_active }}</div>
+      <div class="stat-label"><i class="fas fa-tasks me-1"></i>進行中事項</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#c0392b,#e74c3c);">
+      <div class="stat-number">{{ total_overdue }}</div>
+      <div class="stat-label"><i class="fas fa-exclamation-triangle me-1"></i>逾期事項</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#e67e22,#f39c12);">
+      <div class="stat-number">{{ new_this_week }}</div>
+      <div class="stat-label"><i class="fas fa-plus-circle me-1"></i>本週新增</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);">
+      <div class="stat-number">{{ done_this_week }}</div>
+      <div class="stat-label"><i class="fas fa-check-circle me-1"></i>本週完成</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- ── Left Column ── -->
+  <div class="col-lg-8">
+
+    <!-- Estate breakdown -->
+    <div class="section-card mb-3">
+      <h6><i class="fas fa-city me-2 text-primary"></i>各屋苑事項概況
+        <a href="{{ url_for('tasks.index') }}" class="btn btn-sm btn-outline-primary float-end" style="font-size:11px;">查看全部</a>
+      </h6>
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>屋苑</th>
+              <th class="text-center">進行中</th>
+              <th class="text-center">逾期</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for stat in estate_stats %}
+          {% if stat.active > 0 or stat.overdue > 0 %}
+          <tr {% if stat.overdue > 0 %}class="overdue-row"{% endif %}>
+            <td>
+              <span class="fw-semibold" style="font-size:13px;">{{ stat.estate.display_name }}</span>
+            </td>
+            <td class="text-center">
+              <a href="{{ url_for('tasks.index', estate_id=stat.estate.id) }}" class="text-decoration-none">
+                <span class="badge bg-warning text-dark">{{ stat.active }}</span>
+              </a>
+            </td>
+            <td class="text-center">
+              {% if stat.overdue > 0 %}
+              <a href="{{ url_for('tasks.index', estate_id=stat.estate.id, overdue=1) }}" class="text-decoration-none">
+                <span class="badge bg-danger">{{ stat.overdue }}</span>
+              </a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('tasks.new_task', estate_id=stat.estate.id) }}"
+                 class="btn btn-xs btn-outline-secondary" style="font-size:10px;padding:2px 8px;">
+                <i class="fas fa-plus"></i>
+              </a>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+          {% if not estate_stats %}
+          <tr><td colspan="4" class="text-center text-muted py-3">暫無數據</td></tr>
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Overdue tasks -->
+    {% if overdue_tasks %}
+    <div class="section-card mb-3">
+      <h6><i class="fas fa-exclamation-triangle me-2 text-danger"></i>逾期未完成事項
+        <a href="{{ url_for('tasks.index', overdue=1) }}" class="btn btn-sm btn-outline-danger float-end" style="font-size:11px;">查看全部</a>
+      </h6>
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0">
+          <thead>
+            <tr><th>事項編號</th><th>屋苑</th><th>事項內容</th><th>預計完成</th><th>跟進人</th></tr>
+          </thead>
+          <tbody>
+          {% for task in overdue_tasks %}
+          <tr class="overdue-row">
+            <td><a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-num text-decoration-none">{{ task.task_number }}</a></td>
+            <td><span class="badge bg-secondary" style="font-size:10px;">{{ task.estate.code }}</span></td>
+            <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ task.title }}</td>
+            <td><span class="overdue-badge"><i class="fas fa-clock me-1"></i>{{ task.expected_done.strftime('%d/%m/%Y') }}</span></td>
+            <td>{{ task.assignee.display_name if task.assignee else '—' }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ── Right Column ── -->
+  <div class="col-lg-4">
+
+    <!-- Status chart -->
+    <div class="section-card mb-3">
+      <h6><i class="fas fa-chart-pie me-2 text-primary"></i>事項狀況分佈</h6>
+      <canvas id="statusChart" height="180"></canvas>
+    </div>
+
+    <!-- Staff stats (manager only) -->
+    {% if staff_stats %}
+    <div class="section-card mb-3">
+      <h6><i class="fas fa-users me-2 text-primary"></i>員工工作量</h6>
+      {% for st in staff_stats %}
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div style="font-size:13px;">
+          <div class="fw-semibold">{{ st.user.display_name }}</div>
+          {% if st.overdue > 0 %}
+          <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>{{ st.overdue }} 逾期</small>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <a href="{{ url_for('tasks.index', assignee_id=st.user.id) }}"
+             class="badge bg-warning text-dark text-decoration-none" style="font-size:12px;">
+            {{ st.active }} 項
+          </a>
+        </div>
+      </div>
+      {% if not loop.last %}<hr class="my-1">{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Recent activity -->
+    <div class="section-card">
+      <h6><i class="fas fa-history me-2 text-primary"></i>最新跟進記錄</h6>
+      {% for log in recent_logs %}
+      <div class="mb-2 pb-2 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="d-flex justify-content-between">
+          <a href="{{ url_for('tasks.view_task', task_id=log.task_id) }}"
+             class="task-num text-decoration-none" style="font-size:12px;">{{ log.task.task_number }}</a>
+          <small class="text-muted">{{ log.log_date.strftime('%m/%d') }}</small>
+        </div>
+        <div style="font-size:12px;color:#495057;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">
+          {{ log.content[:60] }}{% if log.content|length > 60 %}…{% endif %}
+        </div>
+        <small class="text-muted">{{ log.author.display_name if log.author else '—' }}</small>
+      </div>
+      {% else %}
+      <div class="text-muted text-center py-2" style="font-size:13px;">暫無記錄</div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const statusData = {{ status_dist | tojson }};
+const colorMap = {
+  'info': '#17a2b8', 'warning': '#ffc107', 'success': '#28a745',
+  'secondary': '#6c757d', 'danger': '#dc3545', 'primary': '#007bff'
+};
+const ctx = document.getElementById('statusChart').getContext('2d');
+new Chart(ctx, {
+  type: 'doughnut',
+  data: {
+    labels: statusData.map(d => d.name),
+    datasets: [{
+      data: statusData.map(d => d.count),
+      backgroundColor: statusData.map(d => colorMap[d.color] || '#6c757d'),
+      borderWidth: 2, borderColor: '#fff'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } }
+    },
+    cutout: '65%'
+  }
+});
+</script>
+{% endblock %}

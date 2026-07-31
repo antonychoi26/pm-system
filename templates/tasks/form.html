@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'new' %}新增事項{% else %}編輯事項{% endif %}{% endblock %}
+{% block page_title %}{% if mode == 'new' %}新增事項{% else %}編輯 {{ task.task_number }}{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('tasks.index') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left me-1"></i>返回清單
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+{% if error %}
+<div class="alert alert-danger" style="font-size:13px;">{{ error }}</div>
+{% endif %}
+
+<form method="POST">
+  <div class="section-card mb-3">
+    <h6><i class="fas fa-building me-2 text-primary"></i>屋苑與種類</h6>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">屋苑 <span class="text-danger">*</span></label>
+        <select name="estate_id" class="form-select" {% if mode == 'edit' %}disabled{% endif %} required>
+          <option value="">— 請選擇屋苑 —</option>
+          {% for e in estates %}
+          <option value="{{ e.id }}"
+            {% if task and task.estate_id == e.id %}selected
+            {% elif preselect_estate and preselect_estate == e.id %}selected
+            {% endif %}>
+            {{ e.display_name }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if mode == 'edit' %}
+        <input type="hidden" name="estate_id" value="{{ task.estate_id }}">
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">事項種類</label>
+        <select name="category_id" class="form-select">
+          <option value="">— 請選擇種類 —</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if task and task.category_id == c.id %}selected{% endif %}>
+            {{ c.name_zh }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card mb-3">
+    <h6><i class="fas fa-align-left me-2 text-primary"></i>事項內容</h6>
+    <div class="mb-3">
+      <label class="form-label">事項內容（標題）<span class="text-danger">*</span></label>
+      <input type="text" name="title" class="form-control"
+             value="{{ task.title if task else '' }}"
+             placeholder="請輸入事項內容…" required>
+    </div>
+    <div class="mb-2">
+      <label class="form-label">詳細說明（可選）</label>
+      <textarea name="description" class="form-control" rows="3"
+                placeholder="輸入詳細說明…">{{ task.description if task else '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="section-card mb-3">
+    <h6><i class="fas fa-sliders-h me-2 text-primary"></i>狀況與分配</h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">事項狀況</label>
+        <select name="status_id" class="form-select">
+          <option value="">— 請選擇狀況 —</option>
+          {% for s in statuses %}
+          <option value="{{ s.id }}"
+            {% if task and task.status_id == s.id %}selected
+            {% elif not task and s.name_zh == '新增' %}selected
+            {% endif %}>
+            {{ s.name_zh }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">預計完成日期</label>
+        <input type="text" name="expected_done" class="form-control datepicker"
+               value="{{ task.expected_done.strftime('%Y-%m-%d') if task and task.expected_done else '' }}"
+               placeholder="YYYY-MM-DD">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">負責跟進人</label>
+        <select name="assignee_id" class="form-select"
+                {% if not current_user.is_manager %}disabled{% endif %}>
+          <option value="">— 未分配 —</option>
+          {% for u in staff_list %}
+          <option value="{{ u.id }}"
+            {% if task and task.assignee_id == u.id %}selected
+            {% elif not task and u.id == current_user.id %}selected
+            {% endif %}>
+            {{ u.display_name }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if not current_user.is_manager %}
+        <input type="hidden" name="assignee_id" value="{{ current_user.id }}">
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if mode == 'new' %}
+  <div class="section-card mb-3">
+    <h6><i class="fas fa-comment me-2 text-success"></i>初始跟進記錄（可選）</h6>
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label">記錄日期</label>
+        <input type="text" name="log_date" class="form-control datepicker"
+               value="{{ now.strftime('%Y-%m-%d') if now is defined else '' }}"
+               placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+    <textarea name="initial_log" class="form-control" rows="3"
+              placeholder="輸入初始跟進記錄（可留空）…"></textarea>
+  </div>
+  {% endif %}
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-save me-1"></i>{% if mode == 'new' %}建立事項{% else %}儲存更改{% endif %}
+    </button>
+    {% if mode == 'edit' %}
+    <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="btn btn-outline-secondary">取消</a>
+    {% else %}
+    <a href="{{ url_for('tasks.index') }}" class="btn btn-outline-secondary">取消</a>
+    {% endif %}
+  </div>
+</form>
+
+</div>
+</div>
+{% endblock %}

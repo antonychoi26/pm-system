@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}用戶管理{% endblock %}
+{% block page_title %}用戶管理{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.new_user') }}" class="btn btn-primary btn-sm">
+  <i class="fas fa-user-plus me-1"></i>新增用戶
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="section-card p-0" style="overflow:hidden;">
+  <div class="table-responsive">
+    <table class="table table-pm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>顯示名稱</th>
+          <th>用戶名</th>
+          <th>角色</th>
+          <th>電郵</th>
+          <th>負責屋苑</th>
+          <th>狀態</th>
+          <th>最後登入</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+      <tr {% if not u.is_active %}class="text-muted opacity-50"{% endif %}>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:30px;height:30px;background:#e8f0fe;flex-shrink:0;">
+              <span style="font-size:12px;font-weight:700;color:#1a3a5c;">{{ u.display_name[0] }}</span>
+            </div>
+            <span class="fw-semibold" style="font-size:13px;">{{ u.display_name }}</span>
+          </div>
+        </td>
+        <td><code style="font-size:12px;">{{ u.username }}</code></td>
+        <td>
+          {% if u.role == 'admin' %}
+          <span class="badge bg-danger">管理員</span>
+          {% elif u.role == 'manager' %}
+          <span class="badge bg-primary">主管</span>
+          {% else %}
+          <span class="badge bg-secondary">員工</span>
+          {% endif %}
+        </td>
+        <td><small class="text-muted">{{ u.email or '—' }}</small></td>
+        <td>
+          {% set assigns = u.estate_assignments.filter_by(is_active=True).all() %}
+          {% for a in assigns[:3] %}
+          <span class="badge bg-light text-dark border" style="font-size:10px;">{{ a.estate.code }}</span>
+          {% endfor %}
+          {% if assigns|length > 3 %}
+          <span class="badge bg-light text-muted" style="font-size:10px;">+{{ assigns|length - 3 }}</span>
+          {% endif %}
+          {% if not assigns and u.role == 'admin' %}
+          <span class="text-muted" style="font-size:11px;">全部</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_active %}
+          <span class="badge bg-success">啟用</span>
+          {% else %}
+          <span class="badge bg-secondary">停用</span>
+          {% endif %}
+        </td>
+        <td><small class="text-muted">{{ u.last_login.strftime('%Y-%m-%d') if u.last_login else '從未' }}</small></td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="{{ url_for('admin.edit_user', user_id=u.id) }}"
+               class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;">
+              <i class="fas fa-edit"></i>
+            </a>
+            {% if current_user.is_admin and u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-xs {% if u.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                      style="font-size:10px;padding:2px 7px;">
+                {% if u.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center py-4 text-muted">暫無用戶</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

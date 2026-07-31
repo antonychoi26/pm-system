@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}生成報告{% endblock %}
+{% block page_title %}生成跟進報告{% endblock %}
+
+{% block content %}
+<div class="row">
+<div class="col-lg-8">
+<div class="section-card">
+  <h6><i class="fas fa-file-alt me-2 text-primary"></i>報告參數設定</h6>
+  <form action="{{ url_for('reports.generate') }}" method="GET" id="reportForm">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">報告標題</label>
+        <input type="text" name="title" class="form-control"
+               value="屋苑每週事項跟進報告" placeholder="報告標題">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">日期（由）</label>
+        <input type="text" name="date_from" class="form-control datepicker"
+               value="{{ default_from }}" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">日期（至）</label>
+        <input type="text" name="date_to" class="form-control datepicker"
+               value="{{ default_to }}" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+
+    <hr class="my-3">
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">選擇屋苑（留空 = 全部）</label>
+        <div class="row g-2">
+          {% for e in estates %}
+          <div class="col-md-3 col-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="estate_ids"
+                     value="{{ e.id }}" id="re_{{ e.id }}">
+              <label class="form-check-label" for="re_{{ e.id }}" style="font-size:13px;">
+                <span class="badge bg-secondary me-1" style="font-size:10px;">{{ e.code }}</span>
+                {{ e.name_zh }}
+              </label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn btn-xs btn-outline-secondary" style="font-size:11px;"
+                  onclick="document.querySelectorAll('input[name=estate_ids]').forEach(cb=>cb.checked=true)">
+            全選
+          </button>
+          <button type="button" class="btn btn-xs btn-outline-secondary ms-1" style="font-size:11px;"
+                  onclick="document.querySelectorAll('input[name=estate_ids]').forEach(cb=>cb.checked=false)">
+            全不選
+          </button>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">事項狀況篩選（留空 = 跟進中 + 完成）</label>
+        <div class="d-flex flex-wrap gap-2">
+          {% for s in statuses %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status_ids"
+                   value="{{ s.id }}" id="rs_{{ s.id }}">
+            <label class="form-check-label" for="rs_{{ s.id }}">
+              <span class="badge bg-{{ s.color }}" style="font-size:11px;">{{ s.name_zh }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">其他選項</label>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="include_terminal" id="incTerminal">
+          <label class="form-check-label" for="incTerminal" style="font-size:13px;">
+            包含「已完成（終止）」事項
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-3">
+    <div class="d-flex gap-2 flex-wrap">
+      <button type="submit" name="format" value="html" class="btn btn-primary">
+        <i class="fas fa-eye me-1"></i>預覽報告
+      </button>
+      <button type="submit" name="format" value="excel" class="btn btn-success">
+        <i class="fas fa-file-excel me-1"></i>匯出 Excel
+      </button>
+    </div>
+  </form>
+</div>
+</div>
+
+<div class="col-lg-4">
+  <div class="section-card">
+    <h6><i class="fas fa-info-circle me-2 text-info"></i>報告說明</h6>
+    <ul style="font-size:13px;" class="ps-3">
+      <li class="mb-2">預設顯示<strong>非終止狀態</strong>的事項（即「新增」、「跟進中」、「完成」）</li>
+      <li class="mb-2">選擇日期範圍後，報告只顯示該期間內有跟進記錄的事項</li>
+      <li class="mb-2">「完成」狀態事項會在下次報告轉為「已完成」後消失，方便主管知悉剛完成的工作</li>
+      <li class="mb-2">匯出 Excel 格式與原有週報格式一致，可直接傳送予上司</li>
+    </ul>
+  </div>
+  {% if current_user.is_manager %}
+  <div class="section-card mt-3">
+    <h6><i class="fas fa-file-import me-2 text-warning"></i>匯入歷史數據</h6>
+    <p style="font-size:13px;">將現有 Excel 數據庫匯入本系統。</p>
+    <a href="{{ url_for('reports.import_excel') }}" class="btn btn-warning btn-sm">
+      <i class="fas fa-upload me-1"></i>匯入 Excel
+    </a>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

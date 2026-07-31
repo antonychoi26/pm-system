@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}匯入數據{% endblock %}
+{% block page_title %}匯入歷史數據{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left me-1"></i>返回
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-7">
+
+{% if error %}
+<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>{{ error }}</div>
+{% endif %}
+
+{% if result %}
+<div class="alert alert-success">
+  <h6><i class="fas fa-check-circle me-2"></i>匯入成功！</h6>
+  <ul class="mb-0">
+    <li>新建事項：<strong>{{ result.created }}</strong> 個</li>
+    <li>新增跟進記錄：<strong>{{ result.logs_added }}</strong> 條</li>
+  </ul>
+  <a href="{{ url_for('tasks.index') }}" class="btn btn-success btn-sm mt-2">
+    <i class="fas fa-tasks me-1"></i>查看工作清單
+  </a>
+</div>
+{% endif %}
+
+<div class="section-card">
+  <h6><i class="fas fa-file-import me-2 text-warning"></i>匯入 Excel 數據</h6>
+  <div class="alert alert-info" style="font-size:13px;">
+    <strong>支援格式：</strong><code>Working_List_DataBase.xlsx</code>（含「DataBase」工作表）<br>
+    格式欄位：編號、事項編號、屋苑、事項種類、事項狀況、事項新增日期、事項內容、跟進日期、事項跟進記錄、預計已完成日期、跟進人<br>
+    <strong>注意：</strong>已存在的事項編號不會重複建立；重複的跟進記錄不會重複加入。
+  </div>
+
+  <form method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label class="form-label">選擇 Excel 檔案 <span class="text-danger">*</span></label>
+      <input type="file" name="file" class="form-control" accept=".xlsx" required>
+    </div>
+    <button type="submit" class="btn btn-warning">
+      <i class="fas fa-upload me-1"></i>開始匯入
+    </button>
+  </form>
+</div>
+
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}工作清單{% endblock %}
+{% block page_title %}工作清單{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary btn-sm">
+  <i class="fas fa-plus me-1"></i>新增事項
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<div class="section-card mb-3">
+  <form method="GET" action="{{ url_for('tasks.index') }}" id="filterForm">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">屋苑</label>
+        <select name="estate_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">全部屋苑</option>
+          {% for e in estates %}
+          <option value="{{ e.id }}" {% if f_estate == e.id %}selected{% endif %}>{{ e.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">事項狀況</label>
+        <select name="status_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">全部狀況</option>
+          {% for s in statuses %}
+          <option value="{{ s.id }}" {% if f_status == s.id %}selected{% endif %}>{{ s.name_zh }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">事項種類</label>
+        <select name="category_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">全部種類</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if f_category == c.id %}selected{% endif %}>{{ c.name_zh }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">跟進人</label>
+        <select name="assignee_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">全部員工</option>
+          {% for u in staff_list %}
+          <option value="{{ u.id }}" {% if f_staff == u.id %}selected{% endif %}>{{ u.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">新增日期（由）</label>
+        <input type="text" name="date_from" class="form-control form-control-sm datepicker"
+               value="{{ f_date_from }}" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label" style="font-size:11px;">新增日期（至）</label>
+        <input type="text" name="date_to" class="form-control form-control-sm datepicker"
+               value="{{ f_date_to }}" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+    <div class="row g-2 mt-1 align-items-center">
+      <div class="col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="fas fa-search"></i></span>
+          <input type="text" name="keyword" class="form-control" placeholder="搜尋事項編號/內容…"
+                 value="{{ f_keyword }}">
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="overdue" value="1" id="cbOverdue"
+                 {% if f_overdue == '1' %}checked{% endif %} onchange="this.form.submit()">
+          <label class="form-check-label text-danger" for="cbOverdue" style="font-size:12px;">
+            <i class="fas fa-exclamation-triangle me-1"></i>只顯示逾期
+          </label>
+        </div>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i>搜尋</button>
+        <a href="{{ url_for('tasks.index') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-times me-1"></i>清除
+        </a>
+      </div>
+      <div class="col-auto ms-auto">
+        <!-- View toggle -->
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="?{{ request.query_string.decode().replace('view=kanban','').replace('view=list','') }}&view=list"
+             class="btn {% if f_view == 'list' or not f_view %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            <i class="fas fa-list"></i>
+          </a>
+          <a href="?{{ request.query_string.decode().replace('view=kanban','').replace('view=list','') }}&view=kanban"
+             class="btn {% if f_view == 'kanban' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            <i class="fas fa-columns"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    <!-- keep view mode on filter submit -->
+    <input type="hidden" name="view" value="{{ f_view }}">
+  </form>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <small class="text-muted">共 <strong>{{ tasks|length }}</strong> 項結果</small>
+  {% if f_view == 'list' or not f_view %}
+  <div></div>
+  {% endif %}
+</div>
+
+<!-- ── LIST VIEW ─────────────────────────────────────────── -->
+{% if f_view != 'kanban' %}
+<div class="section-card p-0" style="overflow:hidden;">
+  <div class="table-responsive">
+    <table class="table table-pm table-hover mb-0">
+      <thead>
+        <tr>
+          <th style="width:130px;">事項編號</th>
+          <th style="width:90px;">屋苑</th>
+          <th>事項內容</th>
+          <th style="width:110px;">種類</th>
+          <th style="width:90px;">狀況</th>
+          <th style="width:105px;">新增日期</th>
+          <th style="width:105px;">預計完成</th>
+          <th style="width:110px;">跟進人</th>
+          <th style="width:60px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for task in tasks %}
+      {% set is_overdue = task.is_overdue %}
+      <tr {% if is_overdue %}class="overdue-row"{% endif %}>
+        <td>
+          <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
+             class="task-num text-decoration-none">{{ task.task_number }}</a>
+          {% if is_overdue %}
+          <br><span class="overdue-badge"><i class="fas fa-clock"></i> 逾期</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge bg-secondary" style="font-size:10px;">{{ task.estate.code }}</span>
+        </td>
+        <td style="max-width:250px;">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ task.title }}</div>
+          {% if task.latest_log %}
+          <small class="text-muted" style="font-size:11px;">
+            最新：{{ task.latest_log.content[:50] }}{% if task.latest_log.content|length > 50 %}…{% endif %}
+          </small>
+          {% endif %}
+        </td>
+        <td><small class="text-muted">{{ task.category.name_zh if task.category else '—' }}</small></td>
+        <td>
+          {% if task.status_obj %}
+          <span class="badge badge-status bg-{{ task.status_obj.color }}">{{ task.status_obj.name_zh }}</span>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td><small>{{ task.created_at.strftime('%Y-%m-%d') }}</small></td>
+        <td>
+          {% if task.expected_done %}
+          <small {% if is_overdue %}class="text-danger fw-bold"{% endif %}>
+            {{ task.expected_done.strftime('%Y-%m-%d') }}
+          </small>
+          {% else %}<span class="text-muted">—</span>{% endif %}
+        </td>
+        <td><small>{{ task.assignee.display_name if task.assignee else '—' }}</small></td>
+        <td>
+          <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
+             class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;">
+            <i class="fas fa-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="text-center py-4 text-muted">
+        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>沒有符合條件的事項
+      </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<!-- ── KANBAN VIEW ────────────────────────────────────────── -->
+<div class="d-flex gap-3 overflow-auto pb-3" style="min-height:60vh;">
+  {% for status, k_tasks in kanban_groups.items() %}
+  <div class="kanban-col flex-shrink-0">
+    <div class="col-header border-{{ status.color }} d-flex align-items-center justify-content-between">
+      <span>
+        <span class="badge bg-{{ status.color }} me-1">{{ k_tasks|length }}</span>
+        {{ status.name_zh }}
+      </span>
+    </div>
+    {% for task in k_tasks %}
+    <div class="kanban-card" onclick="location.href='{{ url_for('tasks.view_task', task_id=task.id) }}'">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <span class="task-num" style="font-size:11px;">{{ task.task_number }}</span>
+        <span class="badge bg-secondary" style="font-size:9px;">{{ task.estate.code }}</span>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:4px;
+                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        {{ task.title }}
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <small class="text-muted" style="font-size:10px;">{{ task.category.name_zh if task.category else '' }}</small>
+        {% if task.expected_done %}
+        <small class="{% if task.is_overdue %}text-danger fw-bold{% else %}text-muted{% endif %}" style="font-size:10px;">
+          {{ task.expected_done.strftime('%m/%d') }}
+        </small>
+        {% endif %}
+      </div>
+      {% if task.assignee %}
+      <div class="mt-1">
+        <span class="badge bg-light text-dark" style="font-size:10px;">{{ task.assignee.display_name }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="text-muted text-center py-3" style="font-size:12px;">無事項</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

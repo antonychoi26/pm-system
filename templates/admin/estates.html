@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}屋苑管理{% endblock %}
+{% block page_title %}屋苑管理{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.new_estate') }}" class="btn btn-primary btn-sm">
+  <i class="fas fa-plus me-1"></i>新增屋苑
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="section-card p-0" style="overflow:hidden;">
+  <div class="table-responsive">
+    <table class="table table-pm table-hover mb-0">
+      <thead>
+        <tr><th>代碼</th><th>中文名稱</th><th>英文名稱</th><th>狀態</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for e in estates %}
+      <tr {% if not e.is_active %}class="opacity-50"{% endif %}>
+        <td><code class="fw-bold">{{ e.code }}</code></td>
+        <td>{{ e.name_zh }}</td>
+        <td class="text-muted">{{ e.name_en or '—' }}</td>
+        <td><span class="badge {% if e.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+          {% if e.is_active %}啟用{% else %}停用{% endif %}</span></td>
+        <td>
+          <a href="{{ url_for('admin.edit_estate', estate_id=e.id) }}"
+             class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;">
+            <i class="fas fa-edit"></i> 編輯
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

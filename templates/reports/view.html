@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}報告預覽{% endblock %}
+{% block page_title %}報告預覽{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left me-1"></i>返回
+</a>
+<button onclick="window.print()" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-print me-1"></i>列印
+</button>
+<a href="{{ request.url.replace('format=html','').replace('?&','?') }}&format=excel"
+   class="btn btn-sm btn-success">
+  <i class="fas fa-file-excel me-1"></i>匯出 Excel
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+  #sidebar, .topbar, .topbar ~ .px-4:first-child { display:none !important; }
+  #main-content { margin-left:0 !important; }
+  .report-container { padding:0 !important; }
+  .no-print { display:none !important; }
+  .page-break { page-break-before: always; }
+}
+.report-header { background: linear-gradient(135deg,#1a3a5c,#2e86de); color:#fff; border-radius:12px; padding:20px 24px; margin-bottom:20px; }
+.estate-section { margin-bottom:28px; }
+.estate-title { background:#f0f4f8; border-left:4px solid #2e86de; padding:10px 16px; border-radius:0 8px 8px 0; margin-bottom:12px; }
+.report-table { font-size:12px; width:100%; border-collapse:collapse; }
+.report-table th { background:#366092; color:#fff; padding:8px 10px; text-align:left; font-size:11px; border:1px solid #ccc; }
+.report-table td { padding:7px 10px; border:1px solid #dee2e6; vertical-align:top; }
+.report-table tr.task-row td { font-weight:600; }
+.report-table tr.log-row td { background:#fafafa; }
+.status-new      { background:#d0ecf7 !important; }
+.status-progress { background:#fff3cd !important; }
+.status-done     { background:#d4edda !important; }
+.status-finish   { background:#e2e3e5 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+  <!-- Report Header -->
+  <div class="report-header d-print-block">
+    <div class="row align-items-center">
+      <div class="col">
+        <h4 class="mb-1">{{ report_title }}</h4>
+        <div style="opacity:0.8;font-size:13px;">
+          第 {{ week_num }} 週
+          {% if f_date_from and f_date_to %} | {{ f_date_from }} — {{ f_date_to }}{% endif %}
+        </div>
+      </div>
+      <div class="col-auto text-end">
+        <div style="font-size:13px;opacity:0.8;">報告日期</div>
+        <div class="fw-bold">{{ ref_date.strftime('%Y年%m月%d日') }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if not sorted_groups %}
+  <div class="section-card text-center py-5">
+    <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+    <div>在選定日期範圍內沒有符合條件的事項。</div>
+  </div>
+  {% endif %}
+
+  {% for estate, task_items in sorted_groups %}
+  <div class="estate-section">
+    <div class="estate-title">
+      <h6 class="mb-0 d-flex align-items-center gap-2">
+        <span class="badge bg-primary">{{ estate.code }}</span>
+        {{ estate.name_zh }}
+        {% if estate.name_en %}<small class="text-muted fw-normal">{{ estate.name_en }}</small>{% endif %}
+        <span class="badge bg-secondary ms-auto">{{ task_items|length }} 項</span>
+      </h6>
+    </div>
+
+    <div class="table-responsive">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th style="width:120px;">事項編號</th>
+            <th style="width:120px;">事項種類</th>
+            <th style="width:80px;">狀況</th>
+            <th style="width:90px;">新增日期</th>
+            <th style="width:200px;">事項內容</th>
+            <th style="width:90px;">跟進日期</th>
+            <th>事項跟進記錄</th>
+            <th style="width:90px;">預計完成</th>
+            <th style="width:90px;">跟進人</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in task_items %}
+        {% set task = item.task %}
+        {% set logs = item.logs %}
+        {% set sc = task.status_obj.color if task.status_obj else 'secondary' %}
+        {% set status_class = {
+          'info':'status-new','warning':'status-progress',
+          'success':'status-done','secondary':'status-finish'
+        }.get(sc, '') %}
+
+        {% if not logs %}
+        <tr class="task-row {{ status_class }}">
+          <td>{{ task.task_number }}</td>
+          <td>{{ task.category.name_zh if task.category else '—' }}</td>
+          <td><span class="badge bg-{{ sc }}" style="font-size:10px;">{{ task.status_obj.name_zh if task.status_obj else '' }}</span></td>
+          <td>{{ task.created_at.strftime('%d/%m/%Y') }}</td>
+          <td>{{ task.title }}</td>
+          <td></td>
+          <td></td>
+          <td>{{ task.expected_done.strftime('%d/%m/%Y') if task.expected_done else '' }}</td>
+          <td>{{ task.assignee.display_name if task.assignee else '' }}</td>
+        </tr>
+        {% else %}
+        {% for i, log in logs | enumerate %}
+        <tr class="{% if i == 0 %}task-row {{ status_class }}{% else %}log-row{% endif %}">
+          {% if i == 0 %}
+          <td>{{ task.task_number }}</td>
+          <td>{{ task.category.name_zh if task.category else '—' }}</td>
+          <td><span class="badge bg-{{ sc }}" style="font-size:10px;">{{ task.status_obj.name_zh if task.status_obj else '' }}</span></td>
+          <td>{{ task.created_at.strftime('%d/%m/%Y') }}</td>
+          <td>{{ task.title }}</td>
+          {% else %}
+          <td></td><td></td><td></td><td></td><td></td>
+          {% endif %}
+          <td>{{ log.log_date.strftime('%d/%m/%Y') }}</td>
+          <td style="white-space:pre-wrap;">{{ log.content }}</td>
+          {% if i == 0 %}
+          <td>{{ task.expected_done.strftime('%d/%m/%Y') if task.expected_done else '' }}</td>
+          <td>{{ task.assignee.display_name if task.assignee else '' }}</td>
+          {% else %}
+          <td></td><td></td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add enumerate filter support
+// The enumerate filter is not built-in Jinja2, handled via template workaround
+</script>
+{% endblock %}
