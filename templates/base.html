@@ -171,6 +171,9 @@
     <a href="{{ url_for('admin.statuses') }}" class="nav-link {% if request.endpoint == 'admin.statuses' %}active{% endif %}">
       <i class="fas fa-stream"></i> 事項狀況
     </a>
+    <a href="{{ url_for('admin.todo_templates') }}" class="nav-link {% if request.endpoint in ['admin.todo_templates','admin.new_todo_template','admin.edit_todo_template'] %}active{% endif %}">
+      <i class="fas fa-layer-group"></i> 工作流程範本
+    </a>
     {% endif %}
   </div>
 

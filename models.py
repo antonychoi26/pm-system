@@ -153,6 +153,9 @@ class Task(db.Model):
 
     logs            = db.relationship('TaskLog', backref='task',
                                       lazy='dynamic', order_by='TaskLog.log_date')
+    todos           = db.relationship('TaskTodo', backref='task',
+                                      lazy='dynamic', order_by='TaskTodo.sort_order',
+                                      cascade='all, delete-orphan')
     created_by      = db.relationship('User', foreign_keys=[created_by_id])
 
     @property
@@ -181,6 +184,74 @@ class TaskLog(db.Model):
 
     def __repr__(self):
         return f'<TaskLog {self.task_id} @ {self.log_date}>'
+
+
+# ─── 工作項目 TaskTodo ────────────────────────────────────────────────────────
+class TaskTodo(db.Model):
+    """Each to-do item (step) belonging to a Task."""
+    __tablename__ = 'task_todos'
+
+    PRIORITY_LOW    = 'low'
+    PRIORITY_NORMAL = 'normal'
+    PRIORITY_HIGH   = 'high'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    task_id      = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    title        = db.Column(db.String(500), nullable=False)          # 工作步驟描述
+    note         = db.Column(db.Text)                                 # 備註
+    sort_order   = db.Column(db.Integer, default=0)                   # 排序（可拖曳）
+    is_done      = db.Column(db.Boolean, default=False)               # 已完成
+    priority     = db.Column(db.String(10), default='normal')         # low/normal/high
+    due_date     = db.Column(db.Date)                                 # 此步驟預計日期
+    done_at      = db.Column(db.DateTime)                             # 勾選完成時間
+    done_by_id   = db.Column(db.Integer, db.ForeignKey('users.id'))   # 由誰完成
+    created_by_id= db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    done_by      = db.relationship('User', foreign_keys=[done_by_id])
+    created_by   = db.relationship('User', foreign_keys=[created_by_id])
+
+    def __repr__(self):
+        return f'<TaskTodo {self.task_id}:{self.title[:30]}>'
+
+
+# ─── 工作流程範本 TodoTemplate ────────────────────────────────────────────────
+class TodoTemplate(db.Model):
+    """A named checklist template that can be applied to any task."""
+    __tablename__ = 'todo_templates'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.String(200), nullable=False)           # 範本名稱
+    description = db.Column(db.Text)                                  # 範本說明
+    category_id = db.Column(db.Integer, db.ForeignKey('task_categories.id'))  # 適用種類（選填）
+    is_active   = db.Column(db.Boolean, default=True)
+    created_by_id= db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    steps       = db.relationship('TodoTemplateStep', backref='template',
+                                  lazy='dynamic', order_by='TodoTemplateStep.sort_order',
+                                  cascade='all, delete-orphan')
+    created_by  = db.relationship('User', foreign_keys=[created_by_id])
+    category    = db.relationship('TaskCategory', foreign_keys=[category_id])
+
+    def __repr__(self):
+        return f'<TodoTemplate {self.name}>'
+
+
+# ─── 範本步驟 TodoTemplateStep ────────────────────────────────────────────────
+class TodoTemplateStep(db.Model):
+    """One step inside a TodoTemplate."""
+    __tablename__ = 'todo_template_steps'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('todo_templates.id'), nullable=False)
+    title       = db.Column(db.String(500), nullable=False)
+    note        = db.Column(db.Text)
+    sort_order  = db.Column(db.Integer, default=0)
+    priority    = db.Column(db.String(10), default='normal')
+
+    def __repr__(self):
+        return f'<TodoTemplateStep {self.template_id}:{self.title[:30]}>'
 
 
 # ─── 序號生成器 TaskNumberSequence ───────────────────────────────────────────

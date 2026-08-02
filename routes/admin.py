@@ -1,7 +1,7 @@
-"""Admin routes - Users, Estates, Categories, Statuses"""
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+"""Admin routes - Users, Estates, Categories, Statuses, TodoTemplates"""
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Estate, TaskCategory, TaskStatus, UserEstateAssignment
+from models import db, User, Estate, TaskCategory, TaskStatus, UserEstateAssignment, TodoTemplate, TodoTemplateStep
 from functools import wraps
 
 admin_bp = Blueprint('admin', __name__)
@@ -340,3 +340,179 @@ def _get_manageable_estates():
         return Estate.query.filter_by(is_active=True).order_by(Estate.code).all()
     ids = current_user.assigned_estate_ids
     return Estate.query.filter(Estate.id.in_(ids), Estate.is_active == True).order_by(Estate.code).all()
+
+
+# ════════════════════════════════════════════════════════════════
+#  TODO TEMPLATES  (Manager+)
+# ════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/todo-templates')
+@login_required
+@manager_required
+def todo_templates():
+    templates = TodoTemplate.query.order_by(TodoTemplate.is_active.desc(), TodoTemplate.name).all()
+    return render_template('admin/todo_templates.html', templates=templates)
+
+
+@admin_bp.route('/todo-templates/new', methods=['GET', 'POST'])
+@login_required
+@manager_required
+def new_todo_template():
+    categories = TaskCategory.query.filter_by(is_active=True).order_by(TaskCategory.sort_order).all()
+    error = None
+
+    if request.method == 'POST':
+        name        = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        category_id = request.form.get('category_id', type=int)
+
+        if not name:
+            error = '範本名稱不能為空。'
+        else:
+            tmpl = TodoTemplate(
+                name=name,
+                description=description if description else None,
+                category_id=category_id or None,
+                created_by_id=current_user.id,
+                is_active=True,
+            )
+            db.session.add(tmpl)
+            db.session.commit()
+            flash(f'範本「{name}」已建立，請繼續新增步驟。', 'success')
+            return redirect(url_for('admin.edit_todo_template', tmpl_id=tmpl.id))
+
+    return render_template('admin/todo_template_form.html',
+        mode='new', tmpl=None, steps=[], categories=categories, error=error)
+
+
+@admin_bp.route('/todo-templates/<int:tmpl_id>/edit', methods=['GET', 'POST'])
+@login_required
+@manager_required
+def edit_todo_template(tmpl_id):
+    tmpl       = TodoTemplate.query.get_or_404(tmpl_id)
+    categories = TaskCategory.query.filter_by(is_active=True).order_by(TaskCategory.sort_order).all()
+    error = None
+
+    if request.method == 'POST':
+        name        = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        category_id = request.form.get('category_id', type=int)
+        is_active   = bool(request.form.get('is_active'))
+
+        if not name:
+            error = '範本名稱不能為空。'
+        else:
+            tmpl.name        = name
+            tmpl.description = description if description else None
+            tmpl.category_id = category_id or None
+            tmpl.is_active   = is_active
+            db.session.commit()
+            flash('範本資料已更新。', 'success')
+            return redirect(url_for('admin.edit_todo_template', tmpl_id=tmpl.id))
+
+    steps = tmpl.steps.order_by(TodoTemplateStep.sort_order).all()
+    return render_template('admin/todo_template_form.html',
+        mode='edit', tmpl=tmpl, steps=steps, categories=categories, error=error)
+
+
+@admin_bp.route('/todo-templates/<int:tmpl_id>/delete', methods=['POST'])
+@login_required
+@manager_required
+def delete_todo_template(tmpl_id):
+    tmpl = TodoTemplate.query.get_or_404(tmpl_id)
+    name = tmpl.name
+    db.session.delete(tmpl)
+    db.session.commit()
+    flash(f'範本「{name}」已刪除。', 'info')
+    return redirect(url_for('admin.todo_templates'))
+
+
+@admin_bp.route('/todo-templates/<int:tmpl_id>/toggle', methods=['POST'])
+@login_required
+@manager_required
+def toggle_todo_template(tmpl_id):
+    tmpl = TodoTemplate.query.get_or_404(tmpl_id)
+    tmpl.is_active = not tmpl.is_active
+    db.session.commit()
+    state = '啟用' if tmpl.is_active else '停用'
+    flash(f'範本「{tmpl.name}」已{state}。', 'info')
+    return redirect(url_for('admin.todo_templates'))
+
+
+# ── Template Steps ────────────────────────────────────────────────────────────
+
+@admin_bp.route('/todo-templates/<int:tmpl_id>/steps/add', methods=['POST'])
+@login_required
+@manager_required
+def add_template_step(tmpl_id):
+    tmpl  = TodoTemplate.query.get_or_404(tmpl_id)
+    title    = request.form.get('title', '').strip()
+    note     = request.form.get('note', '').strip()
+    priority = request.form.get('priority', 'normal')
+
+    if not title:
+        flash('步驟描述不能為空。', 'danger')
+        return redirect(url_for('admin.edit_todo_template', tmpl_id=tmpl_id))
+
+    last = tmpl.steps.order_by(TodoTemplateStep.sort_order.desc()).first()
+    next_order = (last.sort_order + 1) if last else 0
+
+    step = TodoTemplateStep(
+        template_id=tmpl_id,
+        title=title,
+        note=note if note else None,
+        priority=priority,
+        sort_order=next_order,
+    )
+    db.session.add(step)
+    db.session.commit()
+    flash('步驟已新增。', 'success')
+    return redirect(url_for('admin.edit_todo_template', tmpl_id=tmpl_id))
+
+
+@admin_bp.route('/todo-templates/steps/<int:step_id>/edit', methods=['POST'])
+@login_required
+@manager_required
+def edit_template_step(step_id):
+    step  = TodoTemplateStep.query.get_or_404(step_id)
+    title    = request.form.get('title', '').strip()
+    note     = request.form.get('note', '').strip()
+    priority = request.form.get('priority', step.priority)
+
+    if not title:
+        flash('步驟描述不能為空。', 'danger')
+    else:
+        step.title    = title
+        step.note     = note if note else None
+        step.priority = priority
+        db.session.commit()
+        flash('步驟已更新。', 'success')
+
+    return redirect(url_for('admin.edit_todo_template', tmpl_id=step.template_id))
+
+
+@admin_bp.route('/todo-templates/steps/<int:step_id>/delete', methods=['POST'])
+@login_required
+@manager_required
+def delete_template_step(step_id):
+    step = TodoTemplateStep.query.get_or_404(step_id)
+    tmpl_id = step.template_id
+    db.session.delete(step)
+    db.session.commit()
+    flash('步驟已刪除。', 'info')
+    return redirect(url_for('admin.edit_todo_template', tmpl_id=tmpl_id))
+
+
+@admin_bp.route('/todo-templates/steps/reorder', methods=['POST'])
+@login_required
+@manager_required
+def reorder_template_steps():
+    """AJAX: {"order": [step_id, ...]}"""
+    data  = request.get_json(force=True) or {}
+    order = data.get('order', [])
+    for idx, step_id in enumerate(order):
+        step = TodoTemplateStep.query.get(step_id)
+        if step:
+            step.sort_order = idx
+    db.session.commit()
+    return jsonify({'ok': True})

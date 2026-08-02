@@ -3,7 +3,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, jsonify, abort)
 from flask_login import login_required, current_user
 from models import (db, Task, TaskLog, TaskStatus, TaskCategory,
-                    Estate, User, generate_task_number)
+                    Estate, User, generate_task_number, TaskTodo, TodoTemplate)
 from datetime import datetime, date
 from sqlalchemy import or_
 
@@ -192,13 +192,15 @@ def new_task():
 def view_task(task_id):
     task = task_or_403(task_id)
     logs = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc()).all()
+    todos = task.todos.order_by(TaskTodo.sort_order.asc(), TaskTodo.id.asc()).all()
+    templates = TodoTemplate.query.filter_by(is_active=True).order_by(TodoTemplate.name).all()
     statuses   = TaskStatus.query.filter_by(is_active=True).order_by(TaskStatus.sort_order).all()
     categories = TaskCategory.query.filter_by(is_active=True).order_by(TaskCategory.sort_order).all()
     estate_ids = get_accessible_estate_ids()
     staff_list = User.query.filter_by(is_active=True).order_by(User.display_name).all()
     return render_template('tasks/detail.html',
-        task=task, logs=logs, statuses=statuses,
-        categories=categories, staff_list=staff_list,
+        task=task, logs=logs, todos=todos, templates=templates,
+        statuses=statuses, categories=categories, staff_list=staff_list,
     )
 
 
@@ -380,3 +382,185 @@ def update_status(task_id):
             task.completed_at = None
         db.session.commit()
     return jsonify({'ok': True})
+
+
+# ════════════════════════════════════════════════════════════════
+#  TO-DO LIST ROUTES
+# ════════════════════════════════════════════════════════════════
+
+# ── Add Todo Item ─────────────────────────────────────────────────────────────
+@tasks_bp.route('/<int:task_id>/todo/add', methods=['POST'])
+@login_required
+def todo_add(task_id):
+    task = task_or_403(task_id)
+    title    = request.form.get('title', '').strip()
+    note     = request.form.get('note', '').strip()
+    priority = request.form.get('priority', 'normal')
+    due_date_str = request.form.get('due_date', '')
+
+    if not title:
+        flash('工作步驟描述不能為空。', 'danger')
+        return redirect(url_for('tasks.view_task', task_id=task_id))
+
+    # Determine next sort_order
+    last = task.todos.order_by(TaskTodo.sort_order.desc()).first()
+    next_order = (last.sort_order + 1) if last else 0
+
+    due_date = None
+    if due_date_str:
+        try:
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    todo = TaskTodo(
+        task_id=task_id,
+        title=title,
+        note=note if note else None,
+        priority=priority,
+        due_date=due_date,
+        sort_order=next_order,
+        created_by_id=current_user.id,
+    )
+    db.session.add(todo)
+    db.session.commit()
+    flash('工作項目已新增。', 'success')
+    return redirect(url_for('tasks.view_task', task_id=task_id))
+
+
+# ── Toggle Todo Done/Undone (AJAX) ────────────────────────────────────────────
+@tasks_bp.route('/todo/<int:todo_id>/toggle', methods=['POST'])
+@login_required
+def todo_toggle(todo_id):
+    todo = TaskTodo.query.get_or_404(todo_id)
+    task = task_or_403(todo.task_id)
+
+    todo.is_done = not todo.is_done
+    if todo.is_done:
+        todo.done_at    = datetime.utcnow()
+        todo.done_by_id = current_user.id
+    else:
+        todo.done_at    = None
+        todo.done_by_id = None
+
+    db.session.commit()
+
+    # Return progress info for live progress bar update
+    all_todos = task.todos.all()
+    total = len(all_todos)
+    done  = sum(1 for t in all_todos if t.is_done)
+    return jsonify({
+        'ok': True,
+        'is_done': todo.is_done,
+        'total': total,
+        'done': done,
+        'pct': round(done / total * 100) if total else 0,
+    })
+
+
+# ── Edit Todo Item ────────────────────────────────────────────────────────────
+@tasks_bp.route('/todo/<int:todo_id>/edit', methods=['POST'])
+@login_required
+def todo_edit(todo_id):
+    todo = TaskTodo.query.get_or_404(todo_id)
+    task_or_403(todo.task_id)
+
+    # Only manager, or the creator/assignee can edit
+    if not current_user.is_manager and todo.created_by_id != current_user.id:
+        abort(403)
+
+    title    = request.form.get('title', '').strip()
+    note     = request.form.get('note', '').strip()
+    priority = request.form.get('priority', todo.priority)
+    due_date_str = request.form.get('due_date', '')
+
+    if not title:
+        flash('工作步驟描述不能為空。', 'danger')
+        return redirect(url_for('tasks.view_task', task_id=todo.task_id))
+
+    todo.title    = title
+    todo.note     = note if note else None
+    todo.priority = priority
+
+    if due_date_str:
+        try:
+            todo.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            todo.due_date = None
+    else:
+        todo.due_date = None
+
+    db.session.commit()
+    flash('工作項目已更新。', 'success')
+    return redirect(url_for('tasks.view_task', task_id=todo.task_id))
+
+
+# ── Delete Todo Item ──────────────────────────────────────────────────────────
+@tasks_bp.route('/todo/<int:todo_id>/delete', methods=['POST'])
+@login_required
+def todo_delete(todo_id):
+    todo = TaskTodo.query.get_or_404(todo_id)
+    task_or_403(todo.task_id)
+
+    if not current_user.is_manager and todo.created_by_id != current_user.id:
+        abort(403)
+
+    task_id = todo.task_id
+    db.session.delete(todo)
+    db.session.commit()
+    flash('工作項目已刪除。', 'info')
+    return redirect(url_for('tasks.view_task', task_id=task_id))
+
+
+# ── Reorder Todo Items (AJAX drag-drop) ───────────────────────────────────────
+@tasks_bp.route('/todo/reorder', methods=['POST'])
+@login_required
+def todo_reorder():
+    """Expects JSON: {"order": [id1, id2, id3, ...]}"""
+    data = request.get_json(force=True) or {}
+    order = data.get('order', [])
+
+    for idx, todo_id in enumerate(order):
+        todo = TaskTodo.query.get(todo_id)
+        if todo:
+            # Basic access check: user must have estate access
+            if not current_user.can_view_estate(todo.task.estate_id):
+                return jsonify({'error': 'Forbidden'}), 403
+            todo.sort_order = idx
+
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+# ── Apply Template to Task ────────────────────────────────────────────────────
+@tasks_bp.route('/<int:task_id>/todo/apply/<int:template_id>', methods=['POST'])
+@login_required
+def todo_apply_template(task_id, template_id):
+    task     = task_or_403(task_id)
+    template = TodoTemplate.query.get_or_404(template_id)
+
+    if not template.is_active:
+        flash('此範本已停用。', 'danger')
+        return redirect(url_for('tasks.view_task', task_id=task_id))
+
+    # Find current max sort_order
+    last = task.todos.order_by(TaskTodo.sort_order.desc()).first()
+    base_order = (last.sort_order + 1) if last else 0
+
+    steps = template.steps.order_by('sort_order').all()
+    added = 0
+    for i, step in enumerate(steps):
+        todo = TaskTodo(
+            task_id=task_id,
+            title=step.title,
+            note=step.note,
+            priority=step.priority,
+            sort_order=base_order + i,
+            created_by_id=current_user.id,
+        )
+        db.session.add(todo)
+        added += 1
+
+    db.session.commit()
+    flash(f'已從範本「{template.name}」套用 {added} 個工作項目。', 'success')
+    return redirect(url_for('tasks.view_task', task_id=task_id))

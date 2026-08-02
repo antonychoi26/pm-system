@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}工作流程範本管理{% endblock %}
+{% block page_title %}工作流程範本{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.new_todo_template') }}" class="btn btn-sm btn-success">
+  <i class="fas fa-plus me-1"></i>新增範本
+</a>
+<a href="{{ url_for('admin.index') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="fas fa-arrow-left me-1"></i>返回設定
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="section-card">
+  <h6><i class="fas fa-layer-group me-2 text-primary"></i>工作流程範本
+    <small class="text-muted fw-normal ms-2">（可套用至工作清單，快速建立標準化跟進步驟）</small>
+  </h6>
+
+  {% if templates %}
+  <table class="table table-pm table-hover">
+    <thead>
+      <tr>
+        <th style="width:30%">範本名稱</th>
+        <th style="width:15%">適用種類</th>
+        <th style="width:8%">步驟數</th>
+        <th style="width:15%">建立人</th>
+        <th style="width:12%">建立日期</th>
+        <th style="width:10%">狀態</th>
+        <th style="width:10%">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tmpl in templates %}
+      <tr {% if not tmpl.is_active %}class="table-secondary opacity-75"{% endif %}>
+        <td>
+          <a href="{{ url_for('admin.edit_todo_template', tmpl_id=tmpl.id) }}"
+             class="fw-semibold text-decoration-none">
+            <i class="fas fa-layer-group me-2 text-info"></i>{{ tmpl.name }}
+          </a>
+          {% if tmpl.description %}
+          <div class="text-muted" style="font-size:11px;">{{ tmpl.description[:60] }}{% if tmpl.description|length > 60 %}…{% endif %}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if tmpl.category %}
+          <span class="badge bg-secondary">{{ tmpl.category.name_zh }}</span>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge bg-primary rounded-pill">{{ tmpl.steps.count() }}</span>
+        </td>
+        <td class="text-muted">{{ tmpl.created_by.display_name if tmpl.created_by else '—' }}</td>
+        <td class="text-muted">{{ tmpl.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          {% if tmpl.is_active %}
+          <span class="badge bg-success">啟用</span>
+          {% else %}
+          <span class="badge bg-secondary">停用</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="{{ url_for('admin.edit_todo_template', tmpl_id=tmpl.id) }}"
+               class="btn btn-xs btn-outline-primary" title="編輯" style="font-size:11px;padding:2px 7px;">
+              <i class="fas fa-edit"></i>
+            </a>
+            <form method="POST" action="{{ url_for('admin.toggle_todo_template', tmpl_id=tmpl.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-xs {{ 'btn-outline-warning' if tmpl.is_active else 'btn-outline-success' }}"
+                      title="{{ '停用' if tmpl.is_active else '啟用' }}" style="font-size:11px;padding:2px 7px;">
+                <i class="fas {{ 'fa-eye-slash' if tmpl.is_active else 'fa-eye' }}"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.delete_todo_template', tmpl_id=tmpl.id) }}"
+                  onsubmit="return confirm('確認刪除範本「{{ tmpl.name }}」？此操作不可還原。');" class="d-inline">
+              <button type="submit" class="btn btn-xs btn-outline-danger"
+                      title="刪除" style="font-size:11px;padding:2px 7px;">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="text-center text-muted py-5">
+    <i class="fas fa-layer-group fa-3x mb-3 opacity-25"></i>
+    <p>尚未建立任何工作流程範本。</p>
+    <a href="{{ url_for('admin.new_todo_template') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>立即建立第一個範本
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
