@@ -95,42 +95,9 @@
       </div>
     </div>
 
-    <!-- Due soon tasks -->
-    {% if due_soon_tasks %}
-    <div class="section-card mb-3" style="border-left:4px solid #f39c12;">
-      <h6><i class="fas fa-bell me-2 text-warning"></i>本週即將到期事項
-        <span class="badge bg-warning text-dark ms-1" style="font-size:11px;">{{ due_soon_tasks|length }}</span>
-      </h6>
-      <div class="table-responsive">
-        <table class="table table-pm table-hover mb-0">
-          <thead>
-            <tr><th>事項編號</th><th>屋苑</th><th>事項內容</th><th>預計完成</th><th>跟進人</th></tr>
-          </thead>
-          <tbody>
-          {% for task in due_soon_tasks %}
-          <tr>
-            <td><a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-num text-decoration-none">{{ task.task_number }}</a></td>
-            <td><span class="badge bg-secondary" style="font-size:10px;">{{ task.estate.code }}</span></td>
-            <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ task.title }}</td>
-            <td>
-              {% set days_left = (task.expected_done - today).days %}
-              <span class="badge {% if days_left <= 2 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
-                <i class="fas fa-clock me-1"></i>{{ task.expected_done.strftime('%d/%m/%Y') }}
-                （{{ days_left }} 天）
-              </span>
-            </td>
-            <td>{{ task.assignee.display_name if task.assignee else '—' }}</td>
-          </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% endif %}
-
     <!-- Overdue tasks -->
     {% if overdue_tasks %}
-    <div class="section-card mb-3" style="border-left:4px solid #e74c3c;">
+    <div class="section-card mb-3">
       <h6><i class="fas fa-exclamation-triangle me-2 text-danger"></i>逾期未完成事項
         <a href="{{ url_for('tasks.index', overdue=1) }}" class="btn btn-sm btn-outline-danger float-end" style="font-size:11px;">查看全部</a>
       </h6>

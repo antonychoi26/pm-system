@@ -110,15 +110,6 @@ def index():
         Task.expected_done < overdue_threshold
     ).order_by(Task.expected_done.asc()).limit(10).all()
 
-    # ── Due soon tasks (within 7 days, not yet overdue) ───────────────
-    due_soon_threshold = today + timedelta(days=7)
-    due_soon_tasks = base_q.filter(
-        Task.status_id.in_(active_status_ids),
-        Task.expected_done != None,
-        Task.expected_done >= today,
-        Task.expected_done <= due_soon_threshold
-    ).order_by(Task.expected_done.asc()).limit(10).all()
-
     # ── Recent activity (last 7 logs) ─────────────────────────────────
     accessible_task_ids = [t.id for t in base_q.all()]
     recent_logs = TaskLog.query.filter(
@@ -139,7 +130,6 @@ def index():
         estate_stats=estate_stats,
         staff_stats=staff_stats,
         overdue_tasks=overdue_tasks,
-        due_soon_tasks=due_soon_tasks,
         recent_logs=recent_logs,
         status_dist=status_dist,
         today=today,
