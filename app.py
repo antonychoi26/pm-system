@@ -17,6 +17,9 @@ def create_app():
         'DATABASE_URL', f"sqlite:///{os.path.join(os.path.dirname(__file__), 'pm_system.db')}")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
+    # Session 設定：關閉瀏覽器即清除，共用電腦更安全
+    app.config['SESSION_PERMANENT'] = False
+    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 即使不關閉，1小時後自動過期
 
     # ── Extensions ──────────────────────────────────────────────────────────
     db.init_app(app)

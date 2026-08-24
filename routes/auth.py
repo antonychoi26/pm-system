@@ -9,20 +9,22 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # 若已登入，先登出清除舊 session，讓新用戶可以登入
+    # 共用電腦場景：訪問登入頁時自動清除前一位用戶的 session
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard.index'))
+        logout_user()
 
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        remember = bool(request.form.get('remember'))
 
         user = User.query.filter_by(username=username, is_active=True).first()
         if user and user.check_password(password):
             user.last_login = datetime.utcnow()
             db.session.commit()
-            login_user(user, remember=remember)
+            # remember=False：關閉瀏覽器即清除 session，共用電腦更安全
+            login_user(user, remember=False)
             next_page = request.args.get('next')
             flash(f'歡迎回來，{user.display_name}！', 'success')
             return redirect(next_page or url_for('dashboard.index'))
