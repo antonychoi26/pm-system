@@ -5,8 +5,9 @@ Property Management Working List System - Main Application
 import os
 from flask import Flask
 from flask_login import LoginManager
+from flask_session import Session
 from models import db, User
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def create_app():
     app = Flask(__name__)
@@ -17,12 +18,22 @@ def create_app():
         'DATABASE_URL', f"sqlite:///{os.path.join(os.path.dirname(__file__), 'pm_system.db')}")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
-    # Session 設定：關閉瀏覽器即清除，共用電腦更安全
+
+    # ── Server-Side Session 設定 ──────────────────────────────────────────────
+    # 用 filesystem 儲存 session，每個瀏覽器分頁有獨立 session ID
+    # 解決共用電腦多分頁不同用戶互相干擾的問題
+    SESSION_DIR = os.path.join(os.path.dirname(__file__), 'flask_sessions')
+    os.makedirs(SESSION_DIR, exist_ok=True)
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_FILE_DIR'] = SESSION_DIR
     app.config['SESSION_PERMANENT'] = False
-    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 即使不關閉，1小時後自動過期
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+    app.config['SESSION_USE_SIGNER'] = True        # 防止篡改
+    app.config['SESSION_KEY_PREFIX'] = 'pm_sess:'  # session 檔案前綴
 
     # ── Extensions ──────────────────────────────────────────────────────────
     db.init_app(app)
+    Session(app)  # 啟用 server-side session
 
     login_manager = LoginManager()
     login_manager.init_app(app)

@@ -9,11 +9,11 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # 只在 GET 請求（打開登入頁）時清除舊 session
-    # POST 請求（按下登入按鈕）時不清除，否則會把剛登入的 session 清掉
+    # Server-side session 模式：每個瀏覽器 tab 有自己的 session 檔案
+    # GET：打開登入頁時登出目前用戶，讓新用戶可以登入
+    # POST：驗證並登入新用戶
     if request.method == 'GET':
-        logout_user()
-        session.clear()
+        logout_user()  # 登出目前用戶（清除此 tab 的 session）
 
     error = None
     if request.method == 'POST':
@@ -24,7 +24,7 @@ def login():
         if user and user.check_password(password):
             user.last_login = datetime.utcnow()
             db.session.commit()
-            # remember=False：關閉瀏覽器即清除 session，共用電腦更安全
+            # remember=False：關閉瀏覽器即清除 session
             login_user(user, remember=False)
             next_page = request.args.get('next')
             flash(f'歡迎回來，{user.display_name}！', 'success')
