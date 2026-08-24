@@ -121,8 +121,8 @@ def edit_user(user_id):
         display_name = request.form.get('display_name', '').strip()
         email        = request.form.get('email', '').strip()
         role         = request.form.get('role', user.role)
-        new_password = request.form.get('new_password', '')
-        confirm_pw   = request.form.get('confirm_password', '')
+        new_password = request.form.get('password', '').strip()
+        confirm_pw   = request.form.get('confirm_password', '').strip()
         estate_ids   = request.form.getlist('estate_ids', type=int)
         is_active    = bool(request.form.get('is_active'))
 
