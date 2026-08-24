@@ -1,5 +1,5 @@
 """Authentication routes - Login / Logout"""
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from datetime import datetime
@@ -9,10 +9,10 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # 若已登入，先登出清除舊 session，讓新用戶可以登入
-    # 共用電腦場景：訪問登入頁時自動清除前一位用戶的 session
-    if current_user.is_authenticated:
-        logout_user()
+    # 強制清除舊 session，讓新用戶可以登入
+    # 共用電腦場景：每次訪問登入頁都完整清除前一位用戶的所有 session 資料
+    logout_user()
+    session.clear()
 
     error = None
     if request.method == 'POST':
