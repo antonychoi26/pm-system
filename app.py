@@ -41,6 +41,15 @@ def create_app():
 
     app.jinja_env.globals['enumerate'] = enumerate
 
+    # ── 禁止瀏覽器快取所有頁面 ──────────────────────────────────────────────
+    # 共用電腦場景：防止瀏覽器快取上一位用戶的頁面內容
+    @app.after_request
+    def no_cache(response):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
     # ── Blueprints ──────────────────────────────────────────────────────────
     from routes.auth    import auth_bp
     from routes.tasks   import tasks_bp
