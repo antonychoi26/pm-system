@@ -9,10 +9,11 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # 強制清除舊 session，讓新用戶可以登入
-    # 共用電腦場景：每次訪問登入頁都完整清除前一位用戶的所有 session 資料
-    logout_user()
-    session.clear()
+    # 只在 GET 請求（打開登入頁）時清除舊 session
+    # POST 請求（按下登入按鈕）時不清除，否則會把剛登入的 session 清掉
+    if request.method == 'GET':
+        logout_user()
+        session.clear()
 
     error = None
     if request.method == 'POST':
