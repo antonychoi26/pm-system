@@ -6,8 +6,11 @@ import os
 from flask import Flask
 from flask_login import LoginManager
 from flask_session import Session
+from flask_mail import Mail
 from models import db, User
 from datetime import datetime, timedelta
+
+mail = Mail()
 
 def create_app():
     app = Flask(__name__)
@@ -31,8 +34,17 @@ def create_app():
     app.config['SESSION_USE_SIGNER'] = True        # 防止篡改
     app.config['SESSION_KEY_PREFIX'] = 'pm_sess:'  # session 檔案前綴
 
+    # ── Flask-Mail 設定 ──────────────────────────────────────────────────────
+    app.config['MAIL_SERVER']   = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    app.config['MAIL_PORT']     = int(os.environ.get('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS']  = True
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', '')
+
     # ── Extensions ──────────────────────────────────────────────────────────
     db.init_app(app)
+    mail.init_app(app)
     Session(app)  # 啟用 server-side session
 
     login_manager = LoginManager()
@@ -62,17 +74,19 @@ def create_app():
         return response
 
     # ── Blueprints ──────────────────────────────────────────────────────────
-    from routes.auth    import auth_bp
-    from routes.tasks   import tasks_bp
-    from routes.admin   import admin_bp
-    from routes.reports import reports_bp
-    from routes.dashboard import dashboard_bp
+    from routes.auth          import auth_bp
+    from routes.tasks         import tasks_bp
+    from routes.admin         import admin_bp
+    from routes.reports       import reports_bp
+    from routes.dashboard     import dashboard_bp
+    from routes.notifications import notifications_bp
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(tasks_bp,     url_prefix='/tasks')
-    app.register_blueprint(admin_bp,     url_prefix='/admin')
-    app.register_blueprint(reports_bp,   url_prefix='/reports')
-    app.register_blueprint(dashboard_bp, url_prefix='/')
+    app.register_blueprint(tasks_bp,          url_prefix='/tasks')
+    app.register_blueprint(admin_bp,          url_prefix='/admin')
+    app.register_blueprint(reports_bp,        url_prefix='/reports')
+    app.register_blueprint(dashboard_bp,      url_prefix='/')
+    app.register_blueprint(notifications_bp,  url_prefix='/notifications')
 
     # ── Init DB & seed ──────────────────────────────────────────────────────
     with app.app_context():
@@ -94,8 +108,26 @@ def seed_defaults():
             TaskStatus(name_zh='跟進中', name_en='In Progress', color='warning', sort_order=2, is_terminal=False),
             TaskStatus(name_zh='完成',   name_en='Completed',   color='success', sort_order=3, is_terminal=False),
             TaskStatus(name_zh='已完成', name_en='Done',        color='secondary',sort_order=4, is_terminal=True),
+            TaskStatus(name_zh='擱置',   name_en='On Hold',     color='dark',    sort_order=5, is_terminal=False),
+            TaskStatus(name_zh='取消',   name_en='Cancelled',   color='danger',  sort_order=6, is_terminal=True),
         ]
         db.session.add_all(statuses)
+    else:
+        # 為現有系統補充「擱置」和「取消」兩個狀態（如果尚未存在）
+        existing_names = {s.name_zh for s in TaskStatus.query.all()}
+        new_statuses = []
+        if '擱置' not in existing_names:
+            last = TaskStatus.query.order_by(TaskStatus.sort_order.desc()).first()
+            new_statuses.append(TaskStatus(name_zh='擱置', name_en='On Hold',
+                                           color='dark', sort_order=(last.sort_order+1 if last else 5),
+                                           is_terminal=False))
+        if '取消' not in existing_names:
+            last = TaskStatus.query.order_by(TaskStatus.sort_order.desc()).first()
+            new_statuses.append(TaskStatus(name_zh='取消', name_en='Cancelled',
+                                           color='danger', sort_order=(last.sort_order+2 if last else 6),
+                                           is_terminal=True))
+        if new_statuses:
+            db.session.add_all(new_statuses)
 
     # ── Default Task Categories ──────────────────────────────────────────
     if TaskCategory.query.count() == 0:

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}電郵提醒{% endblock %}
+{% block page_title %}事項跟進電郵提醒{% endblock %}
+
+{% block content %}
+
+{% if not mail_configured %}
+<div class="alert alert-warning d-flex align-items-start gap-2">
+  <i class="fas fa-exclamation-triangle mt-1"></i>
+  <div>
+    <strong>電郵功能未設定</strong><br>
+    請在 PythonAnywhere 的 WSGI 設定中加入以下環境變數：<br>
+    <code>MAIL_USERNAME=your@gmail.com</code><br>
+    <code>MAIL_PASSWORD=your-app-password</code><br>
+    <small class="text-muted">Gmail 需使用「應用程式密碼」，非登入密碼。</small>
+  </div>
+</div>
+{% endif %}
+
+<!-- 發送按鈕區 -->
+<div class="section-card mb-4">
+  <h6><i class="fas fa-paper-plane me-2 text-primary"></i>批量發送提醒電郵</h6>
+  <p class="text-muted" style="font-size:13px;">系統將自動發送電郵予所有有電郵地址的負責人。</p>
+  <div class="d-flex gap-2 flex-wrap">
+    <form method="POST" action="{{ url_for('notifications.send_notifications') }}" class="d-inline">
+      <input type="hidden" name="send_type" value="all">
+      <button type="submit" class="btn btn-primary" {% if not mail_configured %}disabled{% endif %}
+              onclick="return confirm('確定發送提醒電郵予所有相關負責人？')">
+        <i class="fas fa-paper-plane me-1"></i>發送全部提醒
+        <span class="badge bg-light text-dark ms-1">{{ overdue|length + due_soon|length }}</span>
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('notifications.send_notifications') }}" class="d-inline">
+      <input type="hidden" name="send_type" value="overdue">
+      <button type="submit" class="btn btn-danger" {% if not mail_configured or not overdue %}disabled{% endif %}
+              onclick="return confirm('確定只發送逾期事項提醒？')">
+        <i class="fas fa-exclamation-triangle me-1"></i>只發送逾期提醒
+        <span class="badge bg-light text-dark ms-1">{{ overdue|length }}</span>
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('notifications.send_notifications') }}" class="d-inline">
+      <input type="hidden" name="send_type" value="due_soon">
+      <button type="submit" class="btn btn-warning" {% if not mail_configured or not due_soon %}disabled{% endif %}
+              onclick="return confirm('確定只發送即將到期提醒？')">
+        <i class="fas fa-bell me-1"></i>只發送即將到期提醒
+        <span class="badge bg-light text-dark ms-1">{{ due_soon|length }}</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- 逾期事項 -->
+  <div class="col-lg-6">
+    <div class="section-card h-100" style="border-left:4px solid #dc3545;">
+      <h6><i class="fas fa-exclamation-triangle me-2 text-danger"></i>逾期未完成
+        <span class="badge bg-danger ms-1">{{ overdue|length }}</span>
+      </h6>
+      {% if overdue %}
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0" style="font-size:12px;">
+          <thead>
+            <tr><th>事項編號</th><th>負責人</th><th>預計完成</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+          {% for task in overdue %}
+          {% set days_late = (today - task.expected_done).days %}
+          <tr>
+            <td><a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-num text-decoration-none">{{ task.task_number }}</a></td>
+            <td>
+              {{ task.assignee.display_name if task.assignee else '—' }}
+              {% if task.assignee and task.assignee.email %}
+              <br><small class="text-muted">{{ task.assignee.email }}</small>
+              {% else %}
+              <br><small class="text-danger"><i class="fas fa-times-circle"></i> 無電郵</small>
+              {% endif %}
+            </td>
+            <td><span class="badge bg-danger">逾期 {{ days_late }} 天</span></td>
+            <td>
+              {% if task.assignee and task.assignee.email %}
+              <form method="POST" action="{{ url_for('notifications.send_to_user', user_id=task.assignee_id) }}" class="d-inline">
+                <button type="submit" class="btn btn-xs btn-outline-danger"
+                        style="font-size:10px;padding:2px 6px;"
+                        {% if not mail_configured %}disabled{% endif %}
+                        title="發送提醒給 {{ task.assignee.display_name }}">
+                  <i class="fas fa-envelope"></i>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-3">
+        <i class="fas fa-check-circle text-success fa-2x mb-2"></i><br>
+        沒有逾期事項 ✅
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 即將到期事項 -->
+  <div class="col-lg-6">
+    <div class="section-card h-100" style="border-left:4px solid #f39c12;">
+      <h6><i class="fas fa-bell me-2 text-warning"></i>本週即將到期
+        <span class="badge bg-warning text-dark ms-1">{{ due_soon|length }}</span>
+      </h6>
+      {% if due_soon %}
+      <div class="table-responsive">
+        <table class="table table-pm table-hover mb-0" style="font-size:12px;">
+          <thead>
+            <tr><th>事項編號</th><th>負責人</th><th>預計完成</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+          {% for task in due_soon %}
+          {% set days_left = (task.expected_done - today).days %}
+          <tr>
+            <td><a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="task-num text-decoration-none">{{ task.task_number }}</a></td>
+            <td>
+              {{ task.assignee.display_name if task.assignee else '—' }}
+              {% if task.assignee and task.assignee.email %}
+              <br><small class="text-muted">{{ task.assignee.email }}</small>
+              {% else %}
+              <br><small class="text-danger"><i class="fas fa-times-circle"></i> 無電郵</small>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if days_left <= 2 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                {{ task.expected_done.strftime('%d/%m/%Y') }}<br>還有 {{ days_left }} 天
+              </span>
+            </td>
+            <td>
+              {% if task.assignee and task.assignee.email %}
+              <form method="POST" action="{{ url_for('notifications.send_to_user', user_id=task.assignee_id) }}" class="d-inline">
+                <button type="submit" class="btn btn-xs btn-outline-warning"
+                        style="font-size:10px;padding:2px 6px;"
+                        {% if not mail_configured %}disabled{% endif %}
+                        title="發送提醒給 {{ task.assignee.display_name }}">
+                  <i class="fas fa-envelope"></i>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-3">
+        <i class="fas fa-calendar-check text-success fa-2x mb-2"></i><br>
+        本週沒有即將到期事項 ✅
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 郵件設定說明 -->
+<div class="section-card mt-4">
+  <h6><i class="fas fa-cog me-2 text-secondary"></i>電郵設定說明</h6>
+  <div class="row g-3" style="font-size:13px;">
+    <div class="col-md-6">
+      <strong>使用 Gmail 發送</strong>
+      <ol class="mt-2">
+        <li>登入 Google 帳號 → 安全性</li>
+        <li>開啟「兩步驟驗證」</li>
+        <li>搜尋「應用程式密碼」並建立一個</li>
+        <li>在 PythonAnywhere WSGI 檔案加入：</li>
+      </ol>
+      <pre style="background:#f8f9fa;padding:10px;border-radius:6px;font-size:11px;">os.environ['MAIL_USERNAME'] = 'your@gmail.com'
+os.environ['MAIL_PASSWORD'] = 'xxxx xxxx xxxx xxxx'</pre>
+    </div>
+    <div class="col-md-6">
+      <strong>員工電郵設定</strong>
+      <p class="mt-2">請在 <a href="{{ url_for('admin.users') }}">用戶管理</a> 中為每位員工設定電郵地址，
+      系統才能向他們發送提醒。</p>
+      <div class="alert alert-info py-2" style="font-size:12px;">
+        <i class="fas fa-info-circle me-1"></i>
+        沒有設定電郵的用戶不會收到提醒，但仍會顯示在上方列表中。
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

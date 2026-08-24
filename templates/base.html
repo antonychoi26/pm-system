@@ -156,6 +156,12 @@
     {% endif %}
 
     {% if current_user.is_manager %}
+    <a href="{{ url_for('notifications.index') }}" class="nav-link {% if request.blueprint == 'notifications' %}active{% endif %}">
+      <i class="fas fa-bell"></i> 事項提醒
+    </a>
+    {% endif %}
+
+    {% if current_user.is_manager %}
     <div class="nav-section">管理設定</div>
     {% if current_user.is_admin %}
     <a href="{{ url_for('admin.estates') }}" class="nav-link {% if request.endpoint == 'admin.estates' %}active{% endif %}">
