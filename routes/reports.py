@@ -17,6 +17,16 @@ def get_accessible_estate_ids():
     return current_user.assigned_estate_ids
 
 
+def _get_estates():
+    """取得當前用戶可存取的屋苑列表。"""
+    if current_user.is_admin:
+        return Estate.query.filter_by(is_active=True).order_by(Estate.code).all()
+    ids = current_user.assigned_estate_ids
+    return Estate.query.filter(
+        Estate.id.in_(ids), Estate.is_active == True
+    ).order_by(Estate.code).all()
+
+
 # ── Report Generator ─────────────────────────────────────────────────────────
 @reports_bp.route('/')
 @login_required
@@ -119,10 +129,6 @@ def generate():
     # Sort estates by code
     sorted_groups = sorted(estate_groups.items(), key=lambda x: x[0].code)
 
-    format_type = request.args.get('format', 'html')
-    if format_type == 'excel':
-        return _export_excel(sorted_groups, report_title, f_date_from, f_date_to)
-
     # Compute week number
     try:
         ref_date = datetime.strptime(f_date_to, '%Y-%m-%d') if f_date_to else date.today()
@@ -131,6 +137,14 @@ def generate():
     if isinstance(ref_date, datetime):
         ref_date = ref_date.date()
     week_num = ref_date.isocalendar()[1]
+
+    format_type = request.args.get('format', 'html')
+    if format_type == 'excel':
+        # 沒有資料時不匯出，返回提示
+        if not sorted_groups:
+            flash('所選條件沒有任何事項，無法匯出報告。', 'warning')
+            return redirect(url_for('reports.index'))
+        return _export_excel(sorted_groups, report_title, f_date_from, f_date_to)
 
     return render_template('reports/view.html',
         sorted_groups=sorted_groups,
@@ -159,6 +173,8 @@ def _get_task_ids_with_logs_in_range(date_from, date_to):
 
 def _export_excel(sorted_groups, title, date_from, date_to):
     """Generate Excel report matching original format."""
+    if not sorted_groups:
+        return None
     wb = openpyxl.Workbook()
     wb.remove(wb.active)  # remove default sheet
 
