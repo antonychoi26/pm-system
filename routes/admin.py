@@ -137,7 +137,11 @@ def edit_user(user_id):
         else:
             user.display_name = display_name
             user.email        = email
-            user.is_active    = is_active
+            # 防止 admin 意外停用自己的帳戶
+            if user.id == current_user.id:
+                user.is_active = True
+            else:
+                user.is_active = is_active
             if current_user.is_admin:
                 user.role = role
             if new_password:
