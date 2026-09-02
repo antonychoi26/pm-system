@@ -69,7 +69,7 @@
   <div class="section-card mb-3">
     <h6><i class="fas fa-sliders-h me-2 text-primary"></i>狀況與分配</h6>
     <div class="row g-3">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">事項狀況</label>
         <select name="status_id" class="form-select">
           <option value="">— 請選擇狀況 —</option>
@@ -83,13 +83,26 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
+        <label class="form-label">
+          事項新增日期
+          {% if mode == 'new' %}<span class="text-danger">*</span>{% endif %}
+        </label>
+        <input type="text" name="date_added" class="form-control datepicker"
+               value="{{ task.created_at.strftime('%Y-%m-%d') if task and task.created_at else (now.strftime('%Y-%m-%d') if now is defined else '') }}"
+               placeholder="YYYY-MM-DD"
+               {% if mode == 'edit' %}readonly style="background:#f8f9fa; cursor:not-allowed;"{% endif %}>
+        {% if mode == 'new' %}
+        <div class="form-text text-muted" style="font-size:11px;">預設為今日，可修改為實際發生日期</div>
+        {% endif %}
+      </div>
+      <div class="col-md-3">
         <label class="form-label">預計完成日期</label>
         <input type="text" name="expected_done" class="form-control datepicker"
                value="{{ task.expected_done.strftime('%Y-%m-%d') if task and task.expected_done else '' }}"
                placeholder="YYYY-MM-DD">
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">負責跟進人</label>
         <select name="assignee_id" class="form-select"
                 {% if not current_user.is_manager %}disabled{% endif %}>

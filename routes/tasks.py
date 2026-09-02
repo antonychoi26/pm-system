@@ -124,6 +124,7 @@ def new_task():
         description = request.form.get('description', '').strip()
         assignee_id = request.form.get('assignee_id', type=int)
         expected_done_str = request.form.get('expected_done', '')
+        date_added_str    = request.form.get('date_added', '')
         initial_log = request.form.get('initial_log', '').strip()
         log_date_str= request.form.get('log_date', '')
 
@@ -132,7 +133,17 @@ def new_task():
         elif not title:
             error = '事項內容不能為空。'
         else:
-            year = datetime.utcnow().year
+            # 使用用戶指定的新增日期，否則預設今日
+            if date_added_str:
+                try:
+                    created_at = datetime.strptime(date_added_str, '%Y-%m-%d')
+                except ValueError:
+                    created_at = datetime.utcnow()
+            else:
+                created_at = datetime.utcnow()
+
+            # 以事項新增日期的年份來生成編號
+            year = created_at.year
             task_number = generate_task_number(estate_id, year)
             expected_done = None
             if expected_done_str:
@@ -150,6 +161,7 @@ def new_task():
                 description=description,
                 assignee_id=assignee_id,
                 created_by_id=current_user.id,
+                created_at=created_at,
                 expected_done=expected_done,
             )
             db.session.add(task)
@@ -183,6 +195,7 @@ def new_task():
         estates=estates, categories=categories,
         statuses=statuses, staff_list=staff_list,
         preselect_estate=preselect_estate,
+        now=datetime.utcnow(),
     )
 
 
@@ -260,6 +273,7 @@ def edit_task(task_id):
         mode='edit', task=task, error=error,
         estates=estates, categories=categories,
         statuses=statuses, staff_list=staff_list,
+        now=datetime.utcnow(),
     )
 
 
