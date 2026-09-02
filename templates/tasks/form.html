@@ -16,7 +16,7 @@
 <div class="alert alert-danger" style="font-size:13px;">{{ error }}</div>
 {% endif %}
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
   <div class="section-card mb-3">
     <h6><i class="fas fa-building me-2 text-primary"></i>屋苑與種類</h6>
     <div class="row g-3">
@@ -134,10 +134,62 @@
                placeholder="YYYY-MM-DD">
       </div>
     </div>
-    <textarea name="initial_log" class="form-control" rows="3"
+    <textarea name="initial_log" class="form-control mb-3" rows="3"
               placeholder="輸入初始跟進記錄（可留空）…"></textarea>
+
+    <!-- 初始記錄附件 -->
+    <label class="form-label" style="font-size:13px;">
+      <i class="fas fa-paperclip me-1 text-secondary"></i>附加文件／相片（可選，可多選）
+    </label>
+    <input type="file" name="log_attachments" class="form-control form-control-sm"
+           multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png">
+    <div class="form-text text-muted" style="font-size:11px;">
+      支援：PDF、Word、PPT、Excel、JPEG、PNG｜每次最多 20MB
+    </div>
   </div>
   {% endif %}
+
+  <!-- 事項層級附件（新增 & 編輯均可） -->
+  <div class="section-card mb-3">
+    <h6><i class="fas fa-folder-open me-2 text-warning"></i>事項附件（可選，可多選）</h6>
+    <p class="text-muted mb-2" style="font-size:12px;">
+      上傳與此事項相關的文件或相片（非屬特定跟進記錄）
+    </p>
+    <input type="file" name="task_attachments" class="form-control form-control-sm"
+           multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png">
+    <div class="form-text text-muted" style="font-size:11px;">
+      支援：PDF、Word、PPT、Excel、JPEG、PNG｜每次最多 20MB
+    </div>
+    {% if mode == 'edit' and task %}
+    {% set task_atts = task.attachments.filter_by(log_id=None).all() %}
+    {% if task_atts %}
+    <div class="mt-3">
+      <div class="text-muted mb-1" style="font-size:12px;">已上傳附件：</div>
+      <ul class="list-unstyled mb-0">
+        {% for att in task_atts %}
+        <li class="d-flex align-items-center gap-2 mb-1" style="font-size:13px;">
+          {% if att.is_image %}
+            <i class="fas fa-image text-success"></i>
+          {% else %}
+            <i class="fas fa-file-alt text-primary"></i>
+          {% endif %}
+          <a href="{{ url_for('attachments.download', att_id=att.id) }}" target="_blank">
+            {{ att.original_name }}
+          </a>
+          <span class="text-muted" style="font-size:11px;">({{ (att.file_size/1024)|round(1) }} KB)</span>
+          <form method="POST" action="{{ url_for('attachments.delete', att_id=att.id) }}"
+                onsubmit="return confirm('確認刪除附件「{{ att.original_name }}」？')" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:11px;">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
 
   <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary">

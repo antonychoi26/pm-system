@@ -3,7 +3,9 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, jsonify, abort)
 from flask_login import login_required, current_user
 from models import (db, Task, TaskLog, TaskStatus, TaskCategory,
-                    Estate, User, generate_task_number, TaskTodo, TodoTemplate)
+                    Estate, User, generate_task_number, TaskTodo, TodoTemplate,
+                    TaskAttachment)
+from routes.attachments import save_attachments
 from datetime import datetime, date
 from sqlalchemy import or_
 
@@ -168,6 +170,7 @@ def new_task():
             db.session.flush()  # get task.id
 
             # Initial log entry
+            log = None
             if initial_log:
                 log_date = date.today()
                 if log_date_str:
@@ -182,6 +185,18 @@ def new_task():
                     author_id=current_user.id,
                 )
                 db.session.add(log)
+                db.session.flush()  # get log.id
+
+            # 附件：事項層級附件
+            task_files = request.files.getlist('task_attachments')
+            if task_files:
+                save_attachments(task_files, task.id, log_id=None)
+
+            # 附件：初始記錄附件（若有初始記錄）
+            if log:
+                log_files = request.files.getlist('log_attachments')
+                if log_files:
+                    save_attachments(log_files, task.id, log_id=log.id)
 
             db.session.commit()
             flash(f'事項 {task_number} 已成功建立。', 'success')
@@ -309,6 +324,12 @@ def add_log(task_id):
         author_id=current_user.id,
     )
     db.session.add(log)
+    db.session.flush()  # get log.id for attachment linking
+
+    # 附件處理（可多檔）
+    files = request.files.getlist('attachments')
+    if files:
+        save_attachments(files, task_id, log_id=log.id)
 
     # Optionally update status
     if new_status_id:

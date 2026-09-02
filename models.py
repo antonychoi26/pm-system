@@ -254,6 +254,40 @@ class TodoTemplateStep(db.Model):
         return f'<TodoTemplateStep {self.template_id}:{self.title[:30]}>'
 
 
+# ─── 附件 TaskAttachment ──────────────────────────────────────────────────────
+class TaskAttachment(db.Model):
+    """File/photo attachments linked to a Task or a TaskLog entry."""
+    __tablename__ = 'task_attachments'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    task_id      = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    log_id       = db.Column(db.Integer, db.ForeignKey('task_logs.id'), nullable=True)  # None = task-level
+    filename     = db.Column(db.String(300), nullable=False)   # stored filename (uuid-based)
+    original_name= db.Column(db.String(300), nullable=False)   # original upload name
+    file_type    = db.Column(db.String(20),  nullable=False)   # 'image' or 'document'
+    mime_type    = db.Column(db.String(100))
+    file_size    = db.Column(db.Integer)                       # bytes
+    uploaded_by_id= db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    uploaded_by  = db.relationship('User', foreign_keys=[uploaded_by_id])
+    task         = db.relationship('Task', backref=db.backref('attachments', lazy='dynamic',
+                                   order_by='TaskAttachment.created_at'))
+    log          = db.relationship('TaskLog', backref=db.backref('attachments', lazy='dynamic',
+                                   order_by='TaskAttachment.created_at'))
+
+    @property
+    def is_image(self):
+        return self.file_type == 'image'
+
+    @property
+    def ext(self):
+        return self.original_name.rsplit('.', 1)[-1].lower() if '.' in self.original_name else ''
+
+    def __repr__(self):
+        return f'<TaskAttachment {self.original_name}>'
+
+
 # ─── 序號生成器 TaskNumberSequence ───────────────────────────────────────────
 class TaskNumberSequence(db.Model):
     __tablename__ = 'task_number_sequences'

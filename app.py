@@ -19,6 +19,12 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
 
+    # ── 檔案上傳設定 ────────────────────────────────────────────────────────
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB 上限
+
     # ── Server-Side Session 設定 ──────────────────────────────────────────────
     # 用 filesystem 儲存 session，每個瀏覽器分頁有獨立 session ID
     # 解決共用電腦多分頁不同用戶互相干擾的問題
@@ -62,17 +68,19 @@ def create_app():
         return response
 
     # ── Blueprints ──────────────────────────────────────────────────────────
-    from routes.auth    import auth_bp
-    from routes.tasks   import tasks_bp
-    from routes.admin   import admin_bp
-    from routes.reports import reports_bp
-    from routes.dashboard import dashboard_bp
+    from routes.auth        import auth_bp
+    from routes.tasks       import tasks_bp
+    from routes.admin       import admin_bp
+    from routes.reports     import reports_bp
+    from routes.dashboard   import dashboard_bp
+    from routes.attachments import attachments_bp
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(tasks_bp,     url_prefix='/tasks')
-    app.register_blueprint(admin_bp,     url_prefix='/admin')
-    app.register_blueprint(reports_bp,   url_prefix='/reports')
-    app.register_blueprint(dashboard_bp, url_prefix='/')
+    app.register_blueprint(tasks_bp,       url_prefix='/tasks')
+    app.register_blueprint(admin_bp,       url_prefix='/admin')
+    app.register_blueprint(reports_bp,     url_prefix='/reports')
+    app.register_blueprint(dashboard_bp,   url_prefix='/')
+    app.register_blueprint(attachments_bp, url_prefix='/attachments')
 
     # ── Init DB & seed ──────────────────────────────────────────────────────
     with app.app_context():
