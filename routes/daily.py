@@ -9,7 +9,7 @@ from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from models import db, TaskTodo, Task, Estate, TaskStatus, User
 from routes.tasks import get_accessible_estate_ids
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from sqlalchemy import or_
 
 daily_bp = Blueprint('daily', __name__)
@@ -81,7 +81,8 @@ def index():
 
     # 篩選用資料
     estates    = Estate.query.filter(Estate.id.in_(estate_ids), Estate.is_active==True).order_by(Estate.code).all()
-    staff_list = User.query.filter_by(is_active=True).order_by(User.display_name).all() if current_user.is_manager else []
+    # staff_list for filter bar (manager only) and edit modal (all users need it for assignee dropdown)
+    staff_list = User.query.filter_by(is_active=True).order_by(User.display_name).all()
 
     return render_template('daily/index.html',
         today=today,
@@ -121,3 +122,49 @@ def toggle_todo(todo_id):
 
     db.session.commit()
     return jsonify({'ok': True, 'is_done': todo.is_done})
+
+
+# ── AJAX：編輯工作項目（來自每日工作清單）─────────────────────────────────────
+@daily_bp.route('/todo/<int:todo_id>/edit', methods=['POST'])
+@login_required
+def edit_todo(todo_id):
+    todo = TaskTodo.query.get_or_404(todo_id)
+    task = Task.query.get_or_404(todo.task_id)
+
+    # 權限檢查：主管、建立者或指派對象皆可編輯
+    if not current_user.is_manager and todo.created_by_id != current_user.id and todo.assignee_id != current_user.id:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    title        = request.form.get('title', '').strip()
+    note         = request.form.get('note', '').strip()
+    priority     = request.form.get('priority', todo.priority)
+    due_date_str = request.form.get('due_date', '')
+    assignee_id  = request.form.get('assignee_id', type=int)
+
+    if not title:
+        return jsonify({'error': '工作步驟描述不能為空'}), 400
+
+    todo.title       = title
+    todo.note        = note if note else None
+    todo.priority    = priority
+    todo.assignee_id = assignee_id if assignee_id else None
+
+    if due_date_str:
+        try:
+            todo.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            todo.due_date = None
+    else:
+        todo.due_date = None
+
+    db.session.commit()
+
+    assignee_name = todo.assignee.display_name if todo.assignee else None
+    return jsonify({
+        'ok': True,
+        'title': todo.title,
+        'note': todo.note,
+        'priority': todo.priority,
+        'due_date': todo.due_date.strftime('%Y-%m-%d') if todo.due_date else None,
+        'assignee_name': assignee_name,
+    })

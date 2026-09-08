@@ -205,10 +205,12 @@ class TaskTodo(db.Model):
     due_date     = db.Column(db.Date)                                 # 此步驟預計日期
     done_at      = db.Column(db.DateTime)                             # 勾選完成時間
     done_by_id   = db.Column(db.Integer, db.ForeignKey('users.id'))   # 由誰完成
+    assignee_id  = db.Column(db.Integer, db.ForeignKey('users.id'))   # 指派跟進人員
     created_by_id= db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
 
     done_by      = db.relationship('User', foreign_keys=[done_by_id])
+    assignee     = db.relationship('User', foreign_keys=[assignee_id])
     created_by   = db.relationship('User', foreign_keys=[created_by_id])
 
     def __repr__(self):

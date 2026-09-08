@@ -432,6 +432,7 @@ def todo_add(task_id):
     note     = request.form.get('note', '').strip()
     priority = request.form.get('priority', 'normal')
     due_date_str = request.form.get('due_date', '')
+    assignee_id  = request.form.get('assignee_id', type=int)
 
     if not title:
         flash('工作步驟描述不能為空。', 'danger')
@@ -455,6 +456,7 @@ def todo_add(task_id):
         priority=priority,
         due_date=due_date,
         sort_order=next_order,
+        assignee_id=assignee_id if assignee_id else None,
         created_by_id=current_user.id,
     )
     db.session.add(todo)
@@ -508,14 +510,16 @@ def todo_edit(todo_id):
     note     = request.form.get('note', '').strip()
     priority = request.form.get('priority', todo.priority)
     due_date_str = request.form.get('due_date', '')
+    assignee_id  = request.form.get('assignee_id', type=int)
 
     if not title:
         flash('工作步驟描述不能為空。', 'danger')
         return redirect(url_for('tasks.view_task', task_id=todo.task_id))
 
-    todo.title    = title
-    todo.note     = note if note else None
-    todo.priority = priority
+    todo.title       = title
+    todo.note        = note if note else None
+    todo.priority    = priority
+    todo.assignee_id = assignee_id if assignee_id else None
 
     if due_date_str:
         try:
@@ -527,6 +531,11 @@ def todo_edit(todo_id):
 
     db.session.commit()
     flash('工作項目已更新。', 'success')
+
+    # Support redirect back to daily list if that's where edit came from
+    redirect_to = request.form.get('redirect_to', '')
+    if redirect_to == 'daily':
+        return redirect(url_for('daily.index'))
     return redirect(url_for('tasks.view_task', task_id=todo.task_id))
 
 
