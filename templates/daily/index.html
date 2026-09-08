@@ -96,16 +96,14 @@
            {% if todo.is_done %}checked{% endif %}>
   </div>
 
-  {# 主要內容（可點擊編輯） #}
+  {# 主要內容（可點擊編輯）— 用 data-* 傳值，避免多行 onclick 被瀏覽器截斷 #}
   <div class="flex-grow-1 todo-clickable" style="min-width:0;cursor:pointer;"
-       onclick="openEditModal(
-         {{ todo.id }},
-         {{ todo.title|tojson }},
-         {{ todo.note|tojson if todo.note else 'null' }},
-         {{ todo.priority|tojson }},
-         {{ todo.due_date.strftime('%Y-%m-%d')|tojson if todo.due_date else 'null' }},
-         [{% for a in todo_assignees %}{{ a.user_id }}{% if not loop.last %},{% endif %}{% endfor %}]
-       )"
+       data-todo-edit-id="{{ todo.id }}"
+       data-title="{{ todo.title | e }}"
+       data-note="{{ todo.note | e if todo.note else '' }}"
+       data-priority="{{ todo.priority }}"
+       data-due-date="{{ todo.due_date.strftime('%Y-%m-%d') if todo.due_date else '' }}"
+       data-assignee-ids="[{% for a in todo_assignees %}{{ a.user_id }}{% if not loop.last %},{% endif %}{% endfor %}]"
        title="點擊修訂 / 指派此工作項目">
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -401,6 +399,23 @@ document.querySelectorAll('.daily-todo-check').forEach(cb => {
 });
 
 
+// ── 點擊 todo-clickable → 開啟 Modal（用 event delegation，避免 onclick 多行問題）──
+document.addEventListener('click', function(e) {
+  const el = e.target.closest('.todo-clickable');
+  if (!el) return;
+  e.stopPropagation();
+
+  const todoId      = el.dataset.todoEditId;
+  const title       = el.dataset.title       || '';
+  const note        = el.dataset.note        || '';
+  const priority    = el.dataset.priority    || 'normal';
+  const dueDate     = el.dataset.dueDate     || '';
+  let   assigneeIds = [];
+  try { assigneeIds = JSON.parse(el.dataset.assigneeIds || '[]'); } catch(err) {}
+
+  openEditModal(todoId, title, note, priority, dueDate, assigneeIds);
+});
+
 // ── 開啟編輯 Modal ────────────────────────────────────────────────────────
 function openEditModal(todoId, title, note, priority, dueDate, currentAssigneeIds) {
   document.getElementById('edit-todo-id').value       = todoId;
@@ -493,17 +508,14 @@ document.getElementById('editTodoForm').addEventListener('submit', function(e) {
         });
       }
 
-      // ── 更新 onclick（保留最新 assignee_ids） ──
+      // ── 更新 data-* 屬性（保留最新值供下次點擊使用） ──
       const clickable = document.querySelector(`#daily-todo-${todoId} .todo-clickable`);
       if (clickable) {
-        const newIds = JSON.stringify(data.assignee_ids || []);
-        clickable.setAttribute('onclick',
-          `openEditModal(${todoId},${JSON.stringify(data.title)},` +
-          `${data.note ? JSON.stringify(data.note) : 'null'},` +
-          `${JSON.stringify(data.priority)},` +
-          `${data.due_date ? JSON.stringify(data.due_date) : 'null'},` +
-          `${newIds})`
-        );
+        clickable.dataset.title       = data.title       || '';
+        clickable.dataset.note        = data.note        || '';
+        clickable.dataset.priority    = data.priority    || 'normal';
+        clickable.dataset.dueDate     = data.due_date    || '';
+        clickable.dataset.assigneeIds = JSON.stringify(data.assignee_ids || []);
       }
 
       bootstrap.Modal.getInstance(document.getElementById('editTodoModal')).hide();
