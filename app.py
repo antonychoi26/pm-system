@@ -52,9 +52,11 @@ def create_app():
         return User.query.get(int(user_id))
 
     # ── Jinja2 globals & filters ────────────────────────────────────────────
+    from flask_wtf.csrf import generate_csrf
+
     @app.context_processor
     def inject_globals():
-        return dict(now=datetime.utcnow())
+        return dict(now=datetime.utcnow(), csrf_token=generate_csrf)
 
     app.jinja_env.globals['enumerate'] = enumerate
 
