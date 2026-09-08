@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}每日工作清單{% endblock %}
+{% block page_title %}每日工作清單{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size:13px;">
+  <i class="fas fa-calendar-day me-1"></i>{{ today.strftime('%Y年%m月%d日') }}
+</span>
+{% endblock %}
+
+{% block content %}
+
+{# ── 統計橫幅 ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="section-card text-center py-3">
+      <div style="font-size:28px;font-weight:700;color:#0d6efd;">{{ total_count }}</div>
+      <div style="font-size:12px;color:#6c757d;">未完成項目</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="section-card text-center py-3">
+      <div style="font-size:28px;font-weight:700;color:#dc3545;">{{ overdue_count }}</div>
+      <div style="font-size:12px;color:#6c757d;">逾期項目</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="section-card text-center py-3">
+      <div style="font-size:28px;font-weight:700;color:#fd7e14;">{{ due_today|length }}</div>
+      <div style="font-size:12px;color:#6c757d;">今日到期</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="section-card text-center py-3">
+      <div style="font-size:28px;font-weight:700;color:#198754;">{{ upcoming|length }}</div>
+      <div style="font-size:12px;color:#6c757d;">本週到期</div>
+    </div>
+  </div>
+</div>
+
+{# ── 篩選欄 ── #}
+<div class="section-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:12px;">屋苑</label>
+      <select name="estate_id" class="form-select form-select-sm">
+        <option value="">— 全部屋苑 —</option>
+        {% for e in estates %}
+        <option value="{{ e.id }}" {% if f_estate == e.id %}selected{% endif %}>
+          {{ e.display_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if current_user.is_manager %}
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:12px;">員工</label>
+      <select name="assignee_id" class="form-select form-select-sm">
+        <option value="">— 全部員工 —</option>
+        {% for u in staff_list %}
+        <option value="{{ u.id }}" {% if f_assignee == u.id %}selected{% endif %}>
+          {{ u.display_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-sm btn-primary w-100">
+        <i class="fas fa-filter me-1"></i>篩選
+      </button>
+    </div>
+    {% if f_estate or f_assignee %}
+    <div class="col-md-2">
+      <a href="{{ url_for('daily.index') }}" class="btn btn-sm btn-outline-secondary w-100">
+        <i class="fas fa-times me-1"></i>清除
+      </a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+{# ── 巨集：渲染一個工作項目列 ── #}
+{% macro todo_row(todo, show_date=True) %}
+{% set task = todo.task %}
+<div class="todo-daily-item d-flex align-items-start gap-3 py-2 px-3 border-bottom
+            {% if todo.due_date and todo.due_date < today %}bg-danger-subtle{% endif %}"
+     id="daily-todo-{{ todo.id }}">
+
+  {# 勾選框 #}
+  <div class="pt-1 flex-shrink-0">
+    <input type="checkbox" class="form-check-input daily-todo-check"
+           style="width:18px;height:18px;cursor:pointer;"
+           data-todo-id="{{ todo.id }}"
+           {% if todo.is_done %}checked{% endif %}>
+  </div>
+
+  {# 主要內容 #}
+  <div class="flex-grow-1" style="min-width:0;">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      {# 優先級徽章 #}
+      {% if todo.priority == 'high' %}
+      <span class="badge bg-danger" style="font-size:10px;">緊急</span>
+      {% elif todo.priority == 'low' %}
+      <span class="badge bg-secondary" style="font-size:10px;">低</span>
+      {% endif %}
+
+      {# 工作項目標題 #}
+      <span class="todo-title-text fw-semibold" id="daily-title-{{ todo.id }}"
+            style="font-size:14px;">{{ todo.title }}</span>
+    </div>
+
+    {# 備註 #}
+    {% if todo.note %}
+    <div class="text-muted mt-1" style="font-size:12px;">
+      <i class="fas fa-sticky-note me-1"></i>{{ todo.note }}
+    </div>
+    {% endif %}
+
+    {# 所屬事項資訊 #}
+    <div class="mt-1 d-flex align-items-center gap-2 flex-wrap" style="font-size:12px;">
+      <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
+         class="text-decoration-none text-primary fw-semibold" target="_blank"
+         title="查看事項詳情">
+        <i class="fas fa-external-link-alt me-1" style="font-size:10px;"></i>{{ task.task_number }}
+      </a>
+      <span class="text-muted">{{ task.estate.display_name }}</span>
+      {% if task.category %}
+      <span class="badge bg-light text-dark border" style="font-size:10px;">{{ task.category.name_zh }}</span>
+      {% endif %}
+      <span class="text-muted text-truncate" style="max-width:200px;" title="{{ task.title }}">
+        {{ task.title[:30] }}{% if task.title|length > 30 %}…{% endif %}
+      </span>
+      {% if task.assignee %}
+      <span class="text-muted">
+        <i class="fas fa-user me-1"></i>{{ task.assignee.display_name }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# 到期日 #}
+  {% if show_date and todo.due_date %}
+  <div class="flex-shrink-0 text-end" style="font-size:12px;min-width:70px;">
+    {% if todo.due_date < today %}
+    <span class="text-danger fw-bold">
+      <i class="fas fa-exclamation-circle me-1"></i>
+      逾期 {{ (today - todo.due_date).days }} 天
+    </span>
+    {% elif todo.due_date == today %}
+    <span class="text-warning fw-bold">
+      <i class="fas fa-clock me-1"></i>今日
+    </span>
+    {% else %}
+    {% set days_left = (todo.due_date - today).days %}
+    <span class="text-muted">
+      <i class="fas fa-calendar me-1"></i>
+      {{ todo.due_date.strftime('%m/%d') }}<br>
+      <small>還有 {{ days_left }} 天</small>
+    </span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endmacro %}
+
+{# ── 主要內容區：有到期日 ── #}
+{% if overdue or due_today or upcoming or future %}
+<div class="section-card mb-4">
+  <h6 class="mb-3">
+    <i class="fas fa-calendar-check me-2 text-primary"></i>
+    有到期日的工作項目
+    <span class="text-muted fw-normal ms-1" style="font-size:12px;">
+      ({{ (overdue|length) + (due_today|length) + (upcoming|length) + (future|length) }})
+    </span>
+  </h6>
+
+  {# 逾期 #}
+  {% if overdue %}
+  <div class="mb-3">
+    <div class="d-flex align-items-center gap-2 mb-2 px-3">
+      <span class="badge bg-danger">逾期未完成</span>
+      <span class="text-muted" style="font-size:12px;">{{ overdue|length }} 項</span>
+    </div>
+    {% for todo in overdue %}
+      {{ todo_row(todo) }}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 今日到期 #}
+  {% if due_today %}
+  <div class="mb-3">
+    <div class="d-flex align-items-center gap-2 mb-2 px-3">
+      <span class="badge bg-warning text-dark">今日到期</span>
+      <span class="text-muted" style="font-size:12px;">{{ due_today|length }} 項</span>
+    </div>
+    {% for todo in due_today %}
+      {{ todo_row(todo) }}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 本週到期 #}
+  {% if upcoming %}
+  <div class="mb-3">
+    <div class="d-flex align-items-center gap-2 mb-2 px-3">
+      <span class="badge bg-info text-dark">本週到期（7天內）</span>
+      <span class="text-muted" style="font-size:12px;">{{ upcoming|length }} 項</span>
+    </div>
+    {% for todo in upcoming %}
+      {{ todo_row(todo) }}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 未來 #}
+  {% if future %}
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-2 px-3">
+      <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:12px;"
+              onclick="toggleFuture()" id="future-toggle-btn">
+        <i class="fas fa-chevron-down me-1" id="future-chevron"></i>
+        7天後到期（{{ future|length }} 項）
+      </button>
+    </div>
+    <div id="future-list" style="display:none;">
+      {% for todo in future %}
+        {{ todo_row(todo) }}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{# ── 無到期日的工作項目 ── #}
+{% if no_date %}
+<div class="section-card mb-4">
+  <h6 class="mb-3">
+    <i class="fas fa-inbox me-2 text-secondary"></i>
+    未設到期日的工作項目
+    <span class="text-muted fw-normal ms-1" style="font-size:12px;">({{ no_date|length }})</span>
+  </h6>
+  {% for todo in no_date %}
+    {{ todo_row(todo, show_date=False) }}
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── 空狀態 ── #}
+{% if not overdue and not due_today and not upcoming and not future and not no_date %}
+<div class="section-card text-center py-5">
+  <i class="fas fa-check-circle fa-3x text-success mb-3 d-block"></i>
+  <h5 class="text-success">所有工作項目已完成！</h5>
+  <p class="text-muted mb-0">目前沒有待處理的工作項目。</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// ── 勾選完成 / 取消完成（AJAX）────────────────────────────────────────────
+document.querySelectorAll('.daily-todo-check').forEach(cb => {
+  cb.addEventListener('change', function() {
+    const todoId = this.dataset.todoId;
+    const row    = document.getElementById('daily-todo-' + todoId);
+    const title  = document.getElementById('daily-title-' + todoId);
+
+    fetch(`/daily/todo/${todoId}/toggle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        if (data.is_done) {
+          // 完成：文字劃線、行變灰、短暫後淡出移除
+          title.classList.add('text-decoration-line-through', 'text-muted');
+          row.style.transition = 'opacity 0.6s';
+          row.style.opacity = '0.4';
+          setTimeout(() => {
+            row.style.transition = 'opacity 0.4s, max-height 0.4s';
+            row.style.maxHeight  = '0';
+            row.style.overflow   = 'hidden';
+            row.style.paddingTop = '0';
+            row.style.paddingBottom = '0';
+            setTimeout(() => row.remove(), 450);
+          }, 800);
+
+          // 更新統計
+          updateCount('未完成項目', -1, '#0d6efd');
+        } else {
+          title.classList.remove('text-decoration-line-through', 'text-muted');
+          row.style.opacity = '1';
+        }
+      } else {
+        alert('操作失敗，請重試。');
+        this.checked = !this.checked;
+      }
+    })
+    .catch(() => {
+      alert('網絡錯誤，請重試。');
+      this.checked = !this.checked;
+    });
+  });
+});
+
+// 取得 CSRF Token
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.content : '';
+}
+
+// 更新統計數字
+function updateCount(label, delta, color) {
+  document.querySelectorAll('.section-card .text-center').forEach(card => {
+    const lbl = card.querySelector('div:last-child');
+    if (lbl && lbl.textContent.trim() === label) {
+      const num = card.querySelector('div:first-child');
+      if (num) {
+        const current = parseInt(num.textContent) || 0;
+        num.textContent = Math.max(0, current + delta);
+      }
+    }
+  });
+}
+
+// 展開/收起「7天後到期」
+function toggleFuture() {
+  const list    = document.getElementById('future-list');
+  const chevron = document.getElementById('future-chevron');
+  const btn     = document.getElementById('future-toggle-btn');
+  const isHidden = list.style.display === 'none';
+  list.style.display = isHidden ? 'block' : 'none';
+  chevron.className  = isHidden ? 'fas fa-chevron-up me-1' : 'fas fa-chevron-down me-1';
+}
+</script>
+{% endblock %}
