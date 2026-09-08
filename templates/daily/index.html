@@ -83,6 +83,7 @@
 {# ── 巨集：渲染一個工作項目列 ── #}
 {% macro todo_row(todo, show_date=True) %}
 {% set task = todo.task %}
+{% set todo_assignees = todo.assignees.all() %}
 <div class="todo-daily-item d-flex align-items-start gap-3 py-2 px-3 border-bottom
             {% if todo.due_date and todo.due_date < today %}bg-danger-subtle{% endif %}"
      id="daily-todo-{{ todo.id }}">
@@ -97,13 +98,15 @@
 
   {# 主要內容（可點擊編輯） #}
   <div class="flex-grow-1 todo-clickable" style="min-width:0;cursor:pointer;"
-       onclick="openEditModal({{ todo.id }}, {{ todo.task_id }},
+       onclick="openEditModal(
+         {{ todo.id }},
          {{ todo.title|tojson }},
          {{ todo.note|tojson if todo.note else 'null' }},
          {{ todo.priority|tojson }},
          {{ todo.due_date.strftime('%Y-%m-%d')|tojson if todo.due_date else 'null' }},
-         {{ todo.assignee_id or 'null' }})"
-       title="點擊編輯此工作項目">
+         [{% for a in todo_assignees %}{{ a.user_id }}{% if not loop.last %},{% endif %}{% endfor %}]
+       )"
+       title="點擊修訂 / 指派此工作項目">
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
       {# 優先級徽章 #}
@@ -117,24 +120,21 @@
       <span class="todo-title-text fw-semibold" id="daily-title-{{ todo.id }}"
             style="font-size:14px;">{{ todo.title }}</span>
 
-      {# 指派徽章 #}
-      {% if todo.assignee %}
-      <span class="badge bg-info text-dark" style="font-size:10px;" id="daily-assignee-badge-{{ todo.id }}">
-        <i class="fas fa-user-tag me-1"></i>{{ todo.assignee.display_name }}
+      {# 指派徽章（多人） #}
+      <span id="daily-assignees-{{ todo.id }}" class="d-inline-flex flex-wrap gap-1">
+        {% for a in todo_assignees %}
+        <span class="badge bg-info text-dark" style="font-size:10px;">
+          <i class="fas fa-user-tag me-1"></i>{{ a.user.display_name }}
+        </span>
+        {% endfor %}
       </span>
-      {% else %}
-      <span id="daily-assignee-badge-{{ todo.id }}"></span>
-      {% endif %}
     </div>
 
     {# 備註 #}
-    {% if todo.note %}
-    <div class="text-muted mt-1" id="daily-note-{{ todo.id }}" style="font-size:12px;">
-      <i class="fas fa-sticky-note me-1"></i>{{ todo.note }}
+    <div id="daily-note-{{ todo.id }}"
+         class="text-muted mt-1" style="font-size:12px;{% if not todo.note %}display:none;{% endif %}">
+      <i class="fas fa-sticky-note me-1"></i><span>{{ todo.note or '' }}</span>
     </div>
-    {% else %}
-    <div id="daily-note-{{ todo.id }}" style="font-size:12px;display:none;"></div>
-    {% endif %}
 
     {# 所屬事項資訊 #}
     <div class="mt-1 d-flex align-items-center gap-2 flex-wrap" style="font-size:12px;">
@@ -195,46 +195,36 @@
     </span>
   </h6>
 
-  {# 逾期 #}
   {% if overdue %}
   <div class="mb-3">
     <div class="d-flex align-items-center gap-2 mb-2 px-3">
       <span class="badge bg-danger">逾期未完成</span>
       <span class="text-muted" style="font-size:12px;">{{ overdue|length }} 項</span>
     </div>
-    {% for todo in overdue %}
-      {{ todo_row(todo) }}
-    {% endfor %}
+    {% for todo in overdue %}{{ todo_row(todo) }}{% endfor %}
   </div>
   {% endif %}
 
-  {# 今日到期 #}
   {% if due_today %}
   <div class="mb-3">
     <div class="d-flex align-items-center gap-2 mb-2 px-3">
       <span class="badge bg-warning text-dark">今日到期</span>
       <span class="text-muted" style="font-size:12px;">{{ due_today|length }} 項</span>
     </div>
-    {% for todo in due_today %}
-      {{ todo_row(todo) }}
-    {% endfor %}
+    {% for todo in due_today %}{{ todo_row(todo) }}{% endfor %}
   </div>
   {% endif %}
 
-  {# 本週到期 #}
   {% if upcoming %}
   <div class="mb-3">
     <div class="d-flex align-items-center gap-2 mb-2 px-3">
       <span class="badge bg-info text-dark">本週到期（7天內）</span>
       <span class="text-muted" style="font-size:12px;">{{ upcoming|length }} 項</span>
     </div>
-    {% for todo in upcoming %}
-      {{ todo_row(todo) }}
-    {% endfor %}
+    {% for todo in upcoming %}{{ todo_row(todo) }}{% endfor %}
   </div>
   {% endif %}
 
-  {# 未來 #}
   {% if future %}
   <div>
     <div class="d-flex align-items-center gap-2 mb-2 px-3">
@@ -245,9 +235,7 @@
       </button>
     </div>
     <div id="future-list" style="display:none;">
-      {% for todo in future %}
-        {{ todo_row(todo) }}
-      {% endfor %}
+      {% for todo in future %}{{ todo_row(todo) }}{% endfor %}
     </div>
   </div>
   {% endif %}
@@ -263,9 +251,7 @@
     未設到期日的工作項目
     <span class="text-muted fw-normal ms-1" style="font-size:12px;">({{ no_date|length }})</span>
   </h6>
-  {% for todo in no_date %}
-    {{ todo_row(todo, show_date=False) }}
-  {% endfor %}
+  {% for todo in no_date %}{{ todo_row(todo, show_date=False) }}{% endfor %}
 </div>
 {% endif %}
 
@@ -279,25 +265,35 @@
 {% endif %}
 
 
-{# ── 編輯工作項目 Modal ── #}
-<div class="modal fade" id="editTodoModal" tabindex="-1" aria-labelledby="editTodoModalLabel" aria-hidden="true">
+{# ══════════════════════════════════════════════════════
+   編輯 / 指派工作項目 Modal
+   ══════════════════════════════════════════════════════ #}
+<div class="modal fade" id="editTodoModal" tabindex="-1"
+     aria-labelledby="editTodoModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
+
       <div class="modal-header">
         <h5 class="modal-title" id="editTodoModalLabel">
           <i class="fas fa-edit me-2 text-primary"></i>修訂 / 指派工作項目
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
+
       <form id="editTodoForm">
         <div class="modal-body">
-          <input type="hidden" id="edit-todo-id" value="">
+          <input type="hidden" id="edit-todo-id">
 
+          {# 工作步驟描述 #}
           <div class="mb-3">
-            <label class="form-label fw-semibold">工作步驟描述 <span class="text-danger">*</span></label>
-            <input type="text" id="edit-todo-title" class="form-control" placeholder="輸入工作步驟描述…" required>
+            <label class="form-label fw-semibold">
+              工作步驟描述 <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="edit-todo-title" class="form-control"
+                   placeholder="輸入工作步驟描述…" required>
           </div>
 
+          {# 優先級 + 到期日 #}
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label fw-semibold">優先級</label>
@@ -307,28 +303,44 @@
                 <option value="low">低</option>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">指派跟進人員</label>
-              <select id="edit-todo-assignee" class="form-select">
-                <option value="">— 未指派 —</option>
-                {% for u in staff_list %}
-                <option value="{{ u.id }}">{{ u.display_name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-8">
               <label class="form-label fw-semibold">預計完成日期</label>
               <input type="date" id="edit-todo-due-date" class="form-control">
             </div>
           </div>
 
+          {# 指派跟進人員（多選 checkboxes） #}
           <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="fas fa-user-tag me-1 text-info"></i>指派跟進人員（可多選）
+            </label>
+            <div class="border rounded p-3 d-flex flex-wrap gap-3" style="background:#f8f9fa;">
+              {% for u in staff_list %}
+              <div class="form-check">
+                <input class="form-check-input modal-assignee-check" type="checkbox"
+                       value="{{ u.id }}" id="modal-assignee-{{ u.id }}">
+                <label class="form-check-label" for="modal-assignee-{{ u.id }}">
+                  {{ u.display_name }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="form-text text-muted mt-1">
+              <i class="fas fa-info-circle me-1"></i>
+              被指派的同事會在其「每日工作清單」中看到此工作項目。
+            </div>
+          </div>
+
+          {# 備註 #}
+          <div class="mb-2">
             <label class="form-label fw-semibold">備註（可選）</label>
-            <input type="text" id="edit-todo-note" class="form-control" placeholder="備註說明…">
+            <input type="text" id="edit-todo-note" class="form-control"
+                   placeholder="備註說明…">
           </div>
 
           <div id="edit-todo-error" class="alert alert-danger d-none" role="alert"></div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-1"></i>取消
@@ -338,6 +350,7 @@
           </button>
         </div>
       </form>
+
     </div>
   </div>
 </div>
@@ -351,35 +364,29 @@
 document.querySelectorAll('.daily-todo-check').forEach(cb => {
   cb.addEventListener('change', function() {
     const todoId = this.dataset.todoId;
-    const row    = document.getElementById('daily-todo-' + todoId);
+    const row    = document.getElementById('daily-todo-'  + todoId);
     const title  = document.getElementById('daily-title-' + todoId);
 
     fetch(`/daily/todo/${todoId}/toggle`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      }
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
     })
     .then(r => r.json())
     .then(data => {
       if (data.ok) {
         if (data.is_done) {
-          // 完成：文字劃線、行變灰、短暫後淡出移除
           title.classList.add('text-decoration-line-through', 'text-muted');
           row.style.transition = 'opacity 0.6s';
-          row.style.opacity = '0.4';
+          row.style.opacity    = '0.4';
           setTimeout(() => {
-            row.style.transition = 'opacity 0.4s, max-height 0.4s';
-            row.style.maxHeight  = '0';
-            row.style.overflow   = 'hidden';
-            row.style.paddingTop = '0';
+            row.style.transition    = 'opacity 0.4s, max-height 0.4s';
+            row.style.maxHeight     = '0';
+            row.style.overflow      = 'hidden';
+            row.style.paddingTop    = '0';
             row.style.paddingBottom = '0';
             setTimeout(() => row.remove(), 450);
           }, 800);
-
-          // 更新統計
-          updateCount('未完成項目', -1, '#0d6efd');
+          updateCount('未完成項目', -1);
         } else {
           title.classList.remove('text-decoration-line-through', 'text-muted');
           row.style.opacity = '1';
@@ -389,48 +396,44 @@ document.querySelectorAll('.daily-todo-check').forEach(cb => {
         this.checked = !this.checked;
       }
     })
-    .catch(() => {
-      alert('網絡錯誤，請重試。');
-      this.checked = !this.checked;
-    });
+    .catch(() => { alert('網絡錯誤，請重試。'); this.checked = !this.checked; });
   });
 });
 
+
 // ── 開啟編輯 Modal ────────────────────────────────────────────────────────
-function openEditModal(todoId, taskId, title, note, priority, dueDate, assigneeId) {
+function openEditModal(todoId, title, note, priority, dueDate, currentAssigneeIds) {
   document.getElementById('edit-todo-id').value       = todoId;
-  document.getElementById('edit-todo-title').value    = title || '';
-  document.getElementById('edit-todo-note').value     = note || '';
+  document.getElementById('edit-todo-title').value    = title  || '';
+  document.getElementById('edit-todo-note').value     = note   || '';
   document.getElementById('edit-todo-priority').value = priority || 'normal';
   document.getElementById('edit-todo-due-date').value = dueDate || '';
 
-  // Set assignee dropdown
-  const assigneeSelect = document.getElementById('edit-todo-assignee');
-  assigneeSelect.value = assigneeId ? String(assigneeId) : '';
+  // Reset all checkboxes then check current assignees
+  document.querySelectorAll('.modal-assignee-check').forEach(cb => {
+    cb.checked = currentAssigneeIds.includes(parseInt(cb.value));
+  });
 
   // Clear error
   const errEl = document.getElementById('edit-todo-error');
   errEl.classList.add('d-none');
   errEl.textContent = '';
 
-  // Show modal
-  const modal = new bootstrap.Modal(document.getElementById('editTodoModal'));
-  modal.show();
+  new bootstrap.Modal(document.getElementById('editTodoModal')).show();
 }
 
-// ── 提交編輯表單（AJAX）──────────────────────────────────────────────────
+
+// ── 提交編輯（AJAX）──────────────────────────────────────────────────────
 document.getElementById('editTodoForm').addEventListener('submit', function(e) {
   e.preventDefault();
 
-  const todoId    = document.getElementById('edit-todo-id').value;
-  const title     = document.getElementById('edit-todo-title').value.trim();
-  const note      = document.getElementById('edit-todo-note').value.trim();
-  const priority  = document.getElementById('edit-todo-priority').value;
-  const dueDate   = document.getElementById('edit-todo-due-date').value;
-  const assigneeId= document.getElementById('edit-todo-assignee').value;
-
-  const errEl  = document.getElementById('edit-todo-error');
-  const btnEl  = document.getElementById('edit-todo-submit');
+  const todoId   = document.getElementById('edit-todo-id').value;
+  const title    = document.getElementById('edit-todo-title').value.trim();
+  const note     = document.getElementById('edit-todo-note').value.trim();
+  const priority = document.getElementById('edit-todo-priority').value;
+  const dueDate  = document.getElementById('edit-todo-due-date').value;
+  const errEl    = document.getElementById('edit-todo-error');
+  const btnEl    = document.getElementById('edit-todo-submit');
 
   if (!title) {
     errEl.textContent = '工作步驟描述不能為空。';
@@ -438,16 +441,18 @@ document.getElementById('editTodoForm').addEventListener('submit', function(e) {
     return;
   }
 
-  // Disable button during request
   btnEl.disabled = true;
   btnEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>儲存中…';
 
   const formData = new FormData();
-  formData.append('title',       title);
-  formData.append('note',        note);
-  formData.append('priority',    priority);
-  formData.append('due_date',    dueDate);
-  formData.append('assignee_id', assigneeId);
+  formData.append('title',    title);
+  formData.append('note',     note);
+  formData.append('priority', priority);
+  formData.append('due_date', dueDate);
+  // Collect all checked assignees
+  document.querySelectorAll('.modal-assignee-check:checked').forEach(cb => {
+    formData.append('assignee_ids', cb.value);
+  });
 
   fetch(`/daily/todo/${todoId}/edit`, {
     method: 'POST',
@@ -460,51 +465,47 @@ document.getElementById('editTodoForm').addEventListener('submit', function(e) {
     btnEl.innerHTML = '<i class="fas fa-save me-1"></i>儲存修改';
 
     if (data.ok) {
-      // Update the row in-place
-      const titleEl    = document.getElementById('daily-title-' + todoId);
-      const noteEl     = document.getElementById('daily-note-'  + todoId);
-      const badgeEl    = document.getElementById('daily-assignee-badge-' + todoId);
+      // ── 原地更新標題 ──
+      const titleEl    = document.getElementById('daily-title-'    + todoId);
+      const noteEl     = document.getElementById('daily-note-'     + todoId);
+      const assigneesEl= document.getElementById('daily-assignees-'+ todoId);
 
       if (titleEl) titleEl.textContent = data.title;
 
       if (noteEl) {
         if (data.note) {
-          noteEl.innerHTML = '<i class="fas fa-sticky-note me-1"></i>' + data.note;
+          noteEl.querySelector('span').textContent = data.note;
           noteEl.style.display = '';
         } else {
-          noteEl.textContent = '';
           noteEl.style.display = 'none';
         }
       }
 
-      if (badgeEl) {
-        if (data.assignee_name) {
-          badgeEl.className = 'badge bg-info text-dark';
-          badgeEl.style.fontSize = '10px';
-          badgeEl.innerHTML = '<i class="fas fa-user-tag me-1"></i>' + data.assignee_name;
-        } else {
-          badgeEl.textContent = '';
-          badgeEl.className = '';
-        }
+      // ── 更新指派徽章（重繪） ──
+      if (assigneesEl) {
+        assigneesEl.innerHTML = '';
+        (data.assignee_names || []).forEach(name => {
+          const badge = document.createElement('span');
+          badge.className = 'badge bg-info text-dark';
+          badge.style.fontSize = '10px';
+          badge.innerHTML = `<i class="fas fa-user-tag me-1"></i>${name}`;
+          assigneesEl.appendChild(badge);
+        });
       }
 
-      // Update priority badge
-      const row = document.getElementById('daily-todo-' + todoId);
-      if (row) {
-        const clickable = row.querySelector('.todo-clickable');
-        if (clickable) {
-          // Update onclick data
-          const newOnclick = `openEditModal(${todoId}, null,
-            ${JSON.stringify(data.title)},
-            ${data.note ? JSON.stringify(data.note) : 'null'},
-            ${JSON.stringify(data.priority)},
-            ${data.due_date ? JSON.stringify(data.due_date) : 'null'},
-            ${assigneeId || 'null'})`;
-          clickable.setAttribute('onclick', newOnclick);
-        }
+      // ── 更新 onclick（保留最新 assignee_ids） ──
+      const clickable = document.querySelector(`#daily-todo-${todoId} .todo-clickable`);
+      if (clickable) {
+        const newIds = JSON.stringify(data.assignee_ids || []);
+        clickable.setAttribute('onclick',
+          `openEditModal(${todoId},${JSON.stringify(data.title)},` +
+          `${data.note ? JSON.stringify(data.note) : 'null'},` +
+          `${JSON.stringify(data.priority)},` +
+          `${data.due_date ? JSON.stringify(data.due_date) : 'null'},` +
+          `${newIds})`
+        );
       }
 
-      // Close modal
       bootstrap.Modal.getInstance(document.getElementById('editTodoModal')).hide();
     } else {
       errEl.textContent = data.error || '儲存失敗，請重試。';
@@ -519,31 +520,26 @@ document.getElementById('editTodoForm').addEventListener('submit', function(e) {
   });
 });
 
-// 取得 CSRF Token
+
+// ── 工具函式 ──────────────────────────────────────────────────────────────
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta ? meta.content : '';
 }
 
-// 更新統計數字
-function updateCount(label, delta, color) {
+function updateCount(label, delta) {
   document.querySelectorAll('.section-card .text-center').forEach(card => {
     const lbl = card.querySelector('div:last-child');
     if (lbl && lbl.textContent.trim() === label) {
       const num = card.querySelector('div:first-child');
-      if (num) {
-        const current = parseInt(num.textContent) || 0;
-        num.textContent = Math.max(0, current + delta);
-      }
+      if (num) num.textContent = Math.max(0, (parseInt(num.textContent) || 0) + delta);
     }
   });
 }
 
-// 展開/收起「7天後到期」
 function toggleFuture() {
   const list    = document.getElementById('future-list');
   const chevron = document.getElementById('future-chevron');
-  const btn     = document.getElementById('future-toggle-btn');
   const isHidden = list.style.display === 'none';
   list.style.display = isHidden ? 'block' : 'none';
   chevron.className  = isHidden ? 'fas fa-chevron-up me-1' : 'fas fa-chevron-down me-1';
@@ -552,7 +548,7 @@ function toggleFuture() {
 
 <style>
 .todo-clickable:hover {
-  background-color: rgba(13, 110, 253, 0.04);
+  background-color: rgba(13, 110, 253, 0.05);
   border-radius: 4px;
   transition: background-color 0.15s ease;
 }

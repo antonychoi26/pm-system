@@ -254,20 +254,30 @@
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label" style="font-size:12px;">指派跟進人員</label>
-              <select name="assignee_id" class="form-select form-select-sm">
-                <option value="">— 未指派 —</option>
-                {% for u in staff_list %}
-                <option value="{{ u.id }}">{{ u.display_name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-2">
               <label class="form-label" style="font-size:12px;">預計完成日期</label>
               <input type="text" name="due_date" class="form-control form-control-sm datepicker"
                      placeholder="選擇日期">
             </div>
           </div>
+          <!-- 指派跟進人員（多選 checkboxes） -->
+          {% if staff_list %}
+          <div class="mb-2">
+            <label class="form-label" style="font-size:12px;">
+              <i class="fas fa-user-tag me-1 text-info"></i>指派跟進人員（可多選）
+            </label>
+            <div class="d-flex flex-wrap gap-2 border rounded p-2" style="background:#fff;">
+              {% for u in staff_list %}
+              <div class="form-check form-check-inline me-0">
+                <input class="form-check-input" type="checkbox"
+                       name="assignee_ids" value="{{ u.id }}"
+                       id="add-assignee-{{ u.id }}">
+                <label class="form-check-label" for="add-assignee-{{ u.id }}"
+                       style="font-size:12px;">{{ u.display_name }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
           <div class="mb-2">
             <label class="form-label" style="font-size:12px;">備註（可選）</label>
             <input type="text" name="note" class="form-control form-control-sm"
@@ -314,12 +324,12 @@
                   <i class="fas fa-calendar-alt me-1"></i>{{ todo.due_date.strftime('%m/%d') }}
                 </span>
                 {% endif %}
-                <!-- Assignee badge -->
-                {% if todo.assignee %}
+                <!-- Assignee badges (multi) -->
+                {% for a in todo.assignees %}
                 <span class="badge bg-info text-dark" style="font-size:10px;">
-                  <i class="fas fa-user-tag me-1"></i>{{ todo.assignee.display_name }}
+                  <i class="fas fa-user-tag me-1"></i>{{ a.user.display_name }}
                 </span>
-                {% endif %}
+                {% endfor %}
                 <!-- Done by -->
                 {% if todo.is_done and todo.done_by %}
                 <span class="text-success" style="font-size:11px;">
@@ -349,10 +359,11 @@
             </div>
             {% endif %}
             <!-- Inline edit form (hidden) -->
+            {% set todo_assignee_ids = todo.assignees.all() | map(attribute='user_id') | list %}
             <div id="todo-edit-{{ todo.id }}" style="display:none;width:100%;" class="mt-1">
               <form method="POST" action="{{ url_for('tasks.todo_edit', todo_id=todo.id) }}">
                 <div class="row g-2 mb-1">
-                  <div class="col-md-4">
+                  <div class="col-md-5">
                     <input type="text" name="title" class="form-control form-control-sm"
                            value="{{ todo.title }}" placeholder="工作步驟描述" required>
                   </div>
@@ -363,22 +374,30 @@
                       <option value="low"    {% if todo.priority=='low'    %}selected{% endif %}>低</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
-                    <select name="assignee_id" class="form-select form-select-sm">
-                      <option value="">— 未指派 —</option>
-                      {% for u in staff_list %}
-                      <option value="{{ u.id }}" {% if todo.assignee_id == u.id %}selected{% endif %}>
-                        {{ u.display_name }}
-                      </option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-md-3">
+                  <div class="col-md-5">
                     <input type="text" name="due_date" class="form-control form-control-sm datepicker"
                            value="{{ todo.due_date.strftime('%Y-%m-%d') if todo.due_date else '' }}"
                            placeholder="預計完成日期">
                   </div>
                 </div>
+                <!-- 指派跟進人員（多選） -->
+                {% if staff_list %}
+                <div class="mb-1">
+                  <small class="text-muted"><i class="fas fa-user-tag me-1 text-info"></i>指派跟進人員（可多選）</small>
+                  <div class="d-flex flex-wrap gap-2 border rounded p-2 mt-1" style="background:#fff;">
+                    {% for u in staff_list %}
+                    <div class="form-check form-check-inline me-0">
+                      <input class="form-check-input" type="checkbox"
+                             name="assignee_ids" value="{{ u.id }}"
+                             id="edit-assignee-{{ todo.id }}-{{ u.id }}"
+                             {% if u.id in todo_assignee_ids %}checked{% endif %}>
+                      <label class="form-check-label" for="edit-assignee-{{ todo.id }}-{{ u.id }}"
+                             style="font-size:11px;">{{ u.display_name }}</label>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
                 <div class="mb-1">
                   <input type="text" name="note" class="form-control form-control-sm"
                          value="{{ todo.note or '' }}" placeholder="備註（可選）">

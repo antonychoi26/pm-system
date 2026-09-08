@@ -205,16 +205,36 @@ class TaskTodo(db.Model):
     due_date     = db.Column(db.Date)                                 # 此步驟預計日期
     done_at      = db.Column(db.DateTime)                             # 勾選完成時間
     done_by_id   = db.Column(db.Integer, db.ForeignKey('users.id'))   # 由誰完成
-    assignee_id  = db.Column(db.Integer, db.ForeignKey('users.id'))   # 指派跟進人員
     created_by_id= db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
 
     done_by      = db.relationship('User', foreign_keys=[done_by_id])
-    assignee     = db.relationship('User', foreign_keys=[assignee_id])
     created_by   = db.relationship('User', foreign_keys=[created_by_id])
+    # 多人指派（多對多）
+    assignees    = db.relationship('TaskTodoAssignee',
+                                   backref='todo',
+                                   lazy='dynamic',
+                                   cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<TaskTodo {self.task_id}:{self.title[:30]}>'
+
+
+# ─── 工作項目多人指派 TaskTodoAssignee ───────────────────────────────────────
+class TaskTodoAssignee(db.Model):
+    """Many-to-many: a TaskTodo can be assigned to multiple users."""
+    __tablename__ = 'task_todo_assignees'
+
+    id       = db.Column(db.Integer, primary_key=True)
+    todo_id  = db.Column(db.Integer, db.ForeignKey('task_todos.id'), nullable=False)
+    user_id  = db.Column(db.Integer, db.ForeignKey('users.id'),      nullable=False)
+
+    user     = db.relationship('User', foreign_keys=[user_id])
+
+    __table_args__ = (db.UniqueConstraint('todo_id', 'user_id'),)
+
+    def __repr__(self):
+        return f'<TaskTodoAssignee todo={self.todo_id} user={self.user_id}>'
 
 
 # ─── 工作流程範本 TodoTemplate ────────────────────────────────────────────────

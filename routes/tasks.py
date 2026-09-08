@@ -4,7 +4,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
 from flask_login import login_required, current_user
 from models import (db, Task, TaskLog, TaskStatus, TaskCategory,
                     Estate, User, generate_task_number, TaskTodo, TodoTemplate,
-                    TaskAttachment)
+                    TaskAttachment, TaskTodoAssignee)
 from routes.attachments import save_attachments
 from datetime import datetime, date
 from sqlalchemy import or_
@@ -428,11 +428,12 @@ def update_status(task_id):
 @login_required
 def todo_add(task_id):
     task = task_or_403(task_id)
-    title    = request.form.get('title', '').strip()
-    note     = request.form.get('note', '').strip()
-    priority = request.form.get('priority', 'normal')
+    title        = request.form.get('title', '').strip()
+    note         = request.form.get('note', '').strip()
+    priority     = request.form.get('priority', 'normal')
     due_date_str = request.form.get('due_date', '')
-    assignee_id  = request.form.get('assignee_id', type=int)
+    # Multi-select: form sends multiple values with name="assignee_ids"
+    assignee_ids = request.form.getlist('assignee_ids', type=int)
 
     if not title:
         flash('工作步驟描述不能為空。', 'danger')
@@ -456,10 +457,16 @@ def todo_add(task_id):
         priority=priority,
         due_date=due_date,
         sort_order=next_order,
-        assignee_id=assignee_id if assignee_id else None,
         created_by_id=current_user.id,
     )
     db.session.add(todo)
+    db.session.flush()   # get todo.id before commit
+
+    # Save multi-assignees
+    for uid in set(assignee_ids):
+        if uid:
+            db.session.add(TaskTodoAssignee(todo_id=todo.id, user_id=uid))
+
     db.session.commit()
     flash('工作項目已新增。', 'success')
     return redirect(url_for('tasks.view_task', task_id=task_id))
@@ -502,24 +509,25 @@ def todo_edit(todo_id):
     todo = TaskTodo.query.get_or_404(todo_id)
     task_or_403(todo.task_id)
 
-    # Only manager, or the creator/assignee can edit
-    if not current_user.is_manager and todo.created_by_id != current_user.id:
+    # Only manager, or the creator can edit; assignees checked via TaskTodoAssignee
+    current_assignee_ids = [a.user_id for a in todo.assignees.all()]
+    if not current_user.is_manager and todo.created_by_id != current_user.id \
+            and current_user.id not in current_assignee_ids:
         abort(403)
 
-    title    = request.form.get('title', '').strip()
-    note     = request.form.get('note', '').strip()
-    priority = request.form.get('priority', todo.priority)
+    title        = request.form.get('title', '').strip()
+    note         = request.form.get('note', '').strip()
+    priority     = request.form.get('priority', todo.priority)
     due_date_str = request.form.get('due_date', '')
-    assignee_id  = request.form.get('assignee_id', type=int)
+    assignee_ids = request.form.getlist('assignee_ids', type=int)
 
     if not title:
         flash('工作步驟描述不能為空。', 'danger')
         return redirect(url_for('tasks.view_task', task_id=todo.task_id))
 
-    todo.title       = title
-    todo.note        = note if note else None
-    todo.priority    = priority
-    todo.assignee_id = assignee_id if assignee_id else None
+    todo.title    = title
+    todo.note     = note if note else None
+    todo.priority = priority
 
     if due_date_str:
         try:
@@ -529,10 +537,16 @@ def todo_edit(todo_id):
     else:
         todo.due_date = None
 
+    # Replace assignees: delete existing, insert new set
+    TaskTodoAssignee.query.filter_by(todo_id=todo.id).delete()
+    for uid in set(assignee_ids):
+        if uid:
+            db.session.add(TaskTodoAssignee(todo_id=todo.id, user_id=uid))
+
     db.session.commit()
     flash('工作項目已更新。', 'success')
 
-    # Support redirect back to daily list if that's where edit came from
+    # Support redirect back to daily list
     redirect_to = request.form.get('redirect_to', '')
     if redirect_to == 'daily':
         return redirect(url_for('daily.index'))
