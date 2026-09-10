@@ -136,11 +136,6 @@
 
     {# 所屬事項資訊 #}
     <div class="mt-1 d-flex align-items-center gap-2 flex-wrap" style="font-size:13px;">
-      <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
-         class="text-decoration-none text-primary fw-semibold" target="_blank"
-         title="查看事項詳情" onclick="event.stopPropagation();">
-        <i class="fas fa-external-link-alt me-1" style="font-size:12px;"></i>{{ task.task_number }}
-      </a>
       <span class="text-muted">{{ task.estate.display_name }}</span>
       {% if task.category %}
       <span class="badge bg-light text-dark border" style="font-size:12px;">{{ task.category.name_zh }}</span>
@@ -153,6 +148,11 @@
         <i class="fas fa-user me-1"></i>{{ task.assignee.display_name }}
       </span>
       {% endif %}
+      <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
+         class="btn btn-sm btn-primary ms-1" style="font-size:12px;padding:2px 10px;"
+         title="進入事項主頁面輸入跟進記錄" onclick="event.stopPropagation();">
+        <i class="fas fa-edit me-1"></i>{{ task.task_number }}
+      </a>
     </div>
   </div>
 
