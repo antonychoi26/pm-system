@@ -13,7 +13,8 @@ attachments_bp = Blueprint('attachments', __name__)
 
 # ── 允許的副檔名 ──────────────────────────────────────────────────────────────
 ALLOWED_IMAGE_EXTS    = {'jpg', 'jpeg', 'png'}
-ALLOWED_DOCUMENT_EXTS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
+ALLOWED_DOCUMENT_EXTS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx',
+                         'msg', 'eml'}          # Outlook / 電郵儲存檔
 ALLOWED_ALL_EXTS      = ALLOWED_IMAGE_EXTS | ALLOWED_DOCUMENT_EXTS
 
 MIME_MAP = {
@@ -25,6 +26,8 @@ MIME_MAP = {
     'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'xls':  'application/vnd.ms-excel',
     'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'msg':  'application/vnd.ms-outlook',          # Outlook 郵件
+    'eml':  'message/rfc822',                      # 標準電郵格式
 }
 
 def _allowed(filename):
