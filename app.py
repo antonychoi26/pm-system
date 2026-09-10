@@ -77,6 +77,7 @@ def create_app():
     from routes.dashboard   import dashboard_bp
     from routes.attachments import attachments_bp
     from routes.daily       import daily_bp
+    from routes.calendar    import calendar_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(tasks_bp,       url_prefix='/tasks')
@@ -85,6 +86,7 @@ def create_app():
     app.register_blueprint(dashboard_bp,   url_prefix='/')
     app.register_blueprint(attachments_bp, url_prefix='/attachments')
     app.register_blueprint(daily_bp,       url_prefix='/daily')
+    app.register_blueprint(calendar_bp,    url_prefix='/calendar')
 
     # ── Init DB & seed ──────────────────────────────────────────────────────
     with app.app_context():

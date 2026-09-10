@@ -142,6 +142,9 @@
     <a href="{{ url_for('daily.index') }}" class="nav-link {% if request.blueprint == 'daily' %}active{% endif %}">
       <i class="fas fa-clipboard-list"></i> 每日工作清單
     </a>
+    <a href="{{ url_for('calendar.index') }}" class="nav-link {% if request.blueprint == 'calendar' %}active{% endif %}">
+      <i class="fas fa-calendar-alt"></i> 工作日曆
+    </a>
     <a href="{{ url_for('tasks.index') }}" class="nav-link {% if request.blueprint == 'tasks' %}active{% endif %}">
       <i class="fas fa-tasks"></i> 事項清單
     </a>

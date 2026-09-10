@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block title %}工作日曆{% endblock %}
+{% block page_title %}工作日曆{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex align-items-center gap-3" style="font-size:12px;">
+  <span class="d-flex align-items-center gap-1">
+    <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#dc3545;"></span> 事項逾期
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#fd7e14;"></span> 事項截止
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#6f42c1;"></span> 工作步驟
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#6c757d;"></span> 跟進記錄
+  </span>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── 篩選欄 ── #}
+<div class="section-card mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:12px;">屋苑</label>
+      <select id="filter-estate" class="form-select form-select-sm">
+        <option value="">— 全部屋苑 —</option>
+        {% for e in estates %}
+        <option value="{{ e.id }}">{{ e.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if current_user.is_manager %}
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:12px;">員工</label>
+      <select id="filter-assignee" class="form-select form-select-sm">
+        <option value="">— 全部員工 —</option>
+        {% for u in staff_list %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:12px;">顯示類型</label>
+      <div class="d-flex flex-wrap gap-2 pt-1">
+        <div class="form-check form-check-inline me-0">
+          <input class="form-check-input type-filter" type="checkbox" value="task_deadline" id="chk-task" checked>
+          <label class="form-check-label" for="chk-task" style="font-size:12px;">事項截止</label>
+        </div>
+        <div class="form-check form-check-inline me-0">
+          <input class="form-check-input type-filter" type="checkbox" value="todo_deadline" id="chk-todo" checked>
+          <label class="form-check-label" for="chk-todo" style="font-size:12px;">工作步驟</label>
+        </div>
+        <div class="form-check form-check-inline me-0">
+          <input class="form-check-input type-filter" type="checkbox" value="log" id="chk-log">
+          <label class="form-check-label" for="chk-log" style="font-size:12px;">跟進記錄</label>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-sm btn-primary w-100" onclick="refreshCalendar()">
+        <i class="fas fa-sync me-1"></i>套用篩選
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── 日曆主體 ── #}
+<div class="section-card">
+  <div id="calendar"></div>
+</div>
+
+{# ══════════════════════════════════════════════════════
+   事件詳情 Modal
+   ══════════════════════════════════════════════════════ #}
+<div class="modal fade" id="eventDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header" id="event-modal-header" style="border-bottom:3px solid #dee2e6;">
+        <h5 class="modal-title" id="event-modal-title">事件詳情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="event-modal-body">
+        <!-- 動態填入 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+        <a id="event-modal-link" href="#" target="_blank" class="btn btn-primary btn-sm">
+          <i class="fas fa-external-link-alt me-1"></i>查看事項
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+{# FullCalendar v6 (CDN) #}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+{# FullCalendar 中文語系 #}
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/zh-tw.global.min.js"></script>
+
+<style>
+/* ── 日曆整體 ── */
+#calendar {
+  font-size: 13px;
+}
+.fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.fc .fc-button {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+/* 日期格子高度 */
+.fc .fc-daygrid-day {
+  min-height: 90px;
+}
+/* 今日高亮 */
+.fc .fc-day-today {
+  background: rgba(13,110,253,0.06) !important;
+}
+/* 事件條 */
+.fc-event {
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  padding: 1px 4px !important;
+  cursor: pointer !important;
+}
+/* 週末淡色 */
+.fc .fc-day-sat, .fc .fc-day-sun {
+  background: #fafafa;
+}
+/* 逾期日期數字紅色 */
+.fc .fc-day-past .fc-daygrid-day-number {
+  color: #aaa;
+}
+</style>
+
+<script>
+let calendar;
+let allEvents = [];   // 全部從 API 載入的事件
+let activeTypes = new Set(['task_deadline', 'todo_deadline']); // 預設顯示類型
+
+// ── 初始化 FullCalendar ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  const calEl = document.getElementById('calendar');
+
+  calendar = new FullCalendar.Calendar(calEl, {
+    locale:          'zh-tw',
+    initialView:     'dayGridMonth',
+    headerToolbar: {
+      left:   'prev,next today',
+      center: 'title',
+      right:  'dayGridMonth,dayGridWeek,listMonth'
+    },
+    buttonText: {
+      today:     '今天',
+      month:     '月',
+      week:      '週',
+      listMonth: '清單'
+    },
+    height:      'auto',
+    firstDay:    0,   // 週日為第一天
+    dayMaxEvents: 4,  // 超過顯示 "+N more"
+    moreLinkText: function(n) { return '+' + n + ' 項'; },
+
+    // 事件來源：AJAX 取得
+    events: function(info, successCallback, failureCallback) {
+      fetchEvents(successCallback, failureCallback);
+    },
+
+    // 點擊事件：開啟詳情 Modal
+    eventClick: function(info) {
+      showEventDetail(info.event);
+    },
+
+    // 滑過事件：顯示 tooltip 提示
+    eventMouseEnter: function(info) {
+      info.el.title = info.event.extendedProps.title || info.event.title;
+    },
+  });
+
+  calendar.render();
+
+  // 類型 checkbox 變更時立即重新過濾（不重新 fetch）
+  document.querySelectorAll('.type-filter').forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        activeTypes.add(this.value);
+      } else {
+        activeTypes.delete(this.value);
+      }
+      applyTypeFilter();
+    });
+  });
+});
+
+
+// ── 取得事件（從 API，帶篩選參數）───────────────────────────────────────────
+function fetchEvents(successCallback, failureCallback) {
+  const estateId   = document.getElementById('filter-estate')?.value   || '';
+  const assigneeEl = document.getElementById('filter-assignee');
+  const assigneeId = assigneeEl ? assigneeEl.value : '';
+
+  let url = '/calendar/events';
+  const params = [];
+  if (estateId)   params.push('estate_id='   + estateId);
+  if (assigneeId) params.push('assignee_id=' + assigneeId);
+  if (params.length) url += '?' + params.join('&');
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      allEvents = data;
+      const filtered = data.filter(e => activeTypes.has(e.extendedProps?.type));
+      successCallback(filtered);
+    })
+    .catch(err => {
+      console.error('日曆事件載入失敗', err);
+      if (failureCallback) failureCallback(err);
+    });
+}
+
+
+// ── 篩選按鈕：重新 fetch ─────────────────────────────────────────────────
+function refreshCalendar() {
+  calendar.refetchEvents();
+}
+
+
+// ── 類型過濾（本地篩選，不重新 fetch）────────────────────────────────────
+function applyTypeFilter() {
+  // 移除目前全部事件，再加回符合類型的
+  calendar.removeAllEvents();
+  const filtered = allEvents.filter(e => activeTypes.has(e.extendedProps?.type));
+  filtered.forEach(e => calendar.addEvent(e));
+}
+
+
+// ── 事件詳情 Modal ───────────────────────────────────────────────────────
+function showEventDetail(event) {
+  const props = event.extendedProps;
+  const header = document.getElementById('event-modal-header');
+  const title  = document.getElementById('event-modal-title');
+  const body   = document.getElementById('event-modal-body');
+  const link   = document.getElementById('event-modal-link');
+
+  // 設定標題顏色
+  header.style.borderBottomColor = event.backgroundColor || '#dee2e6';
+  link.href = props.url || '#';
+
+  if (props.type === 'task_deadline') {
+    title.innerHTML = `<i class="fas fa-clipboard-list me-2"></i>事項截止日`;
+    body.innerHTML = `
+      <table class="table table-sm table-borderless mb-0">
+        <tr><th style="width:90px;font-size:12px;color:#666;">事項編號</th>
+            <td><a href="${props.url}" target="_blank" class="text-primary fw-bold">${props.task_number}</a></td></tr>
+        <tr><th style="font-size:12px;color:#666;">事項內容</th>
+            <td style="font-size:13px;">${escHtml(props.title)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">屋苑</th>
+            <td>${escHtml(props.estate)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">種類</th>
+            <td>${props.category ? escHtml(props.category) : '<span class="text-muted">—</span>'}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">負責人</th>
+            <td>${escHtml(props.assignee)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">截止日</th>
+            <td>
+              ${event.startStr}
+              ${props.is_overdue
+                ? '<span class="badge bg-danger ms-2">逾期</span>'
+                : '<span class="badge bg-warning text-dark ms-2">待完成</span>'}
+            </td></tr>
+      </table>`;
+
+  } else if (props.type === 'todo_deadline') {
+    const priorityBadge =
+      props.priority === 'high'   ? '<span class="badge bg-danger ms-1">緊急</span>' :
+      props.priority === 'low'    ? '<span class="badge bg-secondary ms-1">低</span>' : '';
+    const assigneeHtml = props.assignees && props.assignees.length
+      ? props.assignees.map(n => `<span class="badge bg-info text-dark me-1">${escHtml(n)}</span>`).join('')
+      : '<span class="text-muted">未指派</span>';
+
+    title.innerHTML = `<i class="fas fa-check-square me-2"></i>工作步驟截止日`;
+    body.innerHTML = `
+      <table class="table table-sm table-borderless mb-0">
+        <tr><th style="width:90px;font-size:12px;color:#666;">工作描述</th>
+            <td style="font-size:13px;">${escHtml(props.title)} ${priorityBadge}</td></tr>
+        ${props.note ? `<tr><th style="font-size:12px;color:#666;">備註</th>
+            <td class="text-muted" style="font-size:12px;">${escHtml(props.note)}</td></tr>` : ''}
+        <tr><th style="font-size:12px;color:#666;">所屬事項</th>
+            <td><a href="${props.url}" target="_blank" class="text-primary fw-bold">${props.task_number}</a>
+            <span class="text-muted ms-1" style="font-size:12px;">${escHtml(props.estate)}</span></td></tr>
+        <tr><th style="font-size:12px;color:#666;">指派人員</th>
+            <td>${assigneeHtml}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">截止日</th>
+            <td>
+              ${event.startStr}
+              ${props.is_overdue
+                ? '<span class="badge bg-danger ms-2">逾期</span>'
+                : '<span class="badge bg-success ms-2">待完成</span>'}
+            </td></tr>
+      </table>`;
+
+  } else if (props.type === 'log') {
+    title.innerHTML = `<i class="fas fa-file-alt me-2"></i>跟進記錄`;
+    body.innerHTML = `
+      <table class="table table-sm table-borderless mb-0">
+        <tr><th style="width:90px;font-size:12px;color:#666;">事項編號</th>
+            <td><a href="${props.url}" target="_blank" class="text-primary fw-bold">${props.task_number}</a></td></tr>
+        <tr><th style="font-size:12px;color:#666;">事項內容</th>
+            <td style="font-size:13px;">${escHtml(props.task_title)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">屋苑</th>
+            <td>${escHtml(props.estate)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">記錄內容</th>
+            <td class="text-muted" style="font-size:12px;">${escHtml(props.content)}</td></tr>
+        <tr><th style="font-size:12px;color:#666;">記錄日期</th>
+            <td>${event.startStr}</td></tr>
+      </table>`;
+  }
+
+  new bootstrap.Modal(document.getElementById('eventDetailModal')).show();
+}
+
+
+// ── HTML 轉義工具 ─────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+{% endblock %}
