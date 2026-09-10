@@ -14,7 +14,7 @@
     --accent:  #2e86de;
     --sidebar-w: 250px;
   }
-  body { background: #f0f2f5; font-family: 'Segoe UI', 'PingFang TC', sans-serif; font-size: 15px; }
+  body { background: #f0f2f5; font-family: 'Segoe UI', 'PingFang TC', sans-serif; font-size: 16px; }
 
   /* ── Sidebar ── */
   #sidebar {
@@ -28,16 +28,16 @@
     padding: 20px 16px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
   }
-  #sidebar .brand h5 { color: #fff; font-size: 15px; margin:0; }
-  #sidebar .brand small { color: rgba(255,255,255,0.5); font-size: 12px; }
+  #sidebar .brand h5 { color: #fff; font-size: 16px; margin:0; }
+  #sidebar .brand small { color: rgba(255,255,255,0.5); font-size: 13px; }
   #sidebar .nav-section {
-    color: rgba(255,255,255,0.4); font-size: 11px; font-weight:700;
+    color: rgba(255,255,255,0.4); font-size: 12px; font-weight:700;
     text-transform: uppercase; letter-spacing: 1px;
     padding: 16px 16px 4px;
   }
   #sidebar .nav-link {
     color: rgba(255,255,255,0.75); padding: 9px 16px;
-    font-size: 15px; border-radius: 6px; margin: 1px 8px;
+    font-size: 15.5px; border-radius: 6px; margin: 1px 8px;
     transition: all 0.2s;
   }
   #sidebar .nav-link:hover, #sidebar .nav-link.active {
@@ -60,30 +60,30 @@
     display: flex; align-items:center; justify-content:space-between;
     position: sticky; top:0; z-index:100;
   }
-  .topbar .page-title { font-size:18px; font-weight:600; color:#1a3a5c; margin:0; }
+  .topbar .page-title { font-size:20px; font-weight:600; color:#1a3a5c; margin:0; }
 
   /* ── Cards ── */
   .card { border:none; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
   .stat-card { border-radius:12px; padding:20px; color:#fff; transition:transform 0.2s; }
   .stat-card:hover { transform: translateY(-2px); }
   .stat-card .stat-number { font-size:36px; font-weight:700; line-height:1; }
-  .stat-card .stat-label  { font-size:14px; opacity:0.9; margin-top:4px; }
+  .stat-card .stat-label  { font-size:15px; opacity:0.9; margin-top:4px; }
 
   /* ── Status badges ── */
-  .badge-status { font-size:12px; padding:4px 10px; border-radius:20px; font-weight:600; }
+  .badge-status { font-size:13px; padding:4px 10px; border-radius:20px; font-weight:600; }
 
   /* ── Table ── */
-  .table-pm { font-size:14px; }
+  .table-pm { font-size:15px; }
   .table-pm th { background:#f8f9fa; font-weight:600; color:#495057; border-top:none; white-space:nowrap; }
   .table-pm td { vertical-align:middle; }
   .table-pm tr:hover { background:#f8fbff; }
 
   /* ── Task number ── */
-  .task-num { font-family:monospace; font-weight:600; color:#1a3a5c; font-size:14px; }
+  .task-num { font-family:monospace; font-weight:600; color:#1a3a5c; font-size:15px; }
 
   /* ── Kanban ── */
   .kanban-col { min-width: 260px; background:#f8f9fa; border-radius:10px; padding:12px; }
-  .kanban-col .col-header { font-weight:700; font-size:14px; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid; }
+  .kanban-col .col-header { font-weight:700; font-size:15px; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid; }
   .kanban-card { background:#fff; border-radius:8px; padding:12px; margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.06); cursor:pointer; }
   .kanban-card:hover { box-shadow:0 3px 10px rgba(0,0,0,0.1); }
 
@@ -96,12 +96,12 @@
     background:#2e86de; border:2px solid #fff;
     box-shadow:0 0 0 2px #2e86de;
   }
-  .log-entry .log-date { font-size:12px; color:#6c757d; font-weight:600; }
-  .log-entry .log-content { background:#f8f9fa; border-radius:8px; padding:10px 14px; margin-top:4px; font-size:15px; }
+  .log-entry .log-date { font-size:13px; color:#6c757d; font-weight:600; }
+  .log-entry .log-content { background:#f8f9fa; border-radius:8px; padding:10px 14px; margin-top:4px; font-size:16px; }
 
   /* ── Forms ── */
-  .form-label { font-weight:600; font-size:15px; color:#495057; }
-  .form-control, .form-select { font-size:15px; }
+  .form-label { font-weight:600; font-size:16px; color:#495057; }
+  .form-control, .form-select { font-size:16px; }
   .section-card { background:#fff; border-radius:12px; padding:20px 24px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:20px; }
   .section-card h6 { color:#1a3a5c; font-weight:700; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #f0f0f0; }
 
@@ -110,12 +110,12 @@
     #sidebar { transform: translateX(-100%); }
     #sidebar.show { transform: translateX(0); }
     #main-content { margin-left: 0; }
-    .stat-card .stat-number { font-size:30px; }
+    .stat-card .stat-number { font-size:32px; }
   }
 
   /* ── Overdue highlight ── */
   .overdue-row td { background:#fff5f5 !important; }
-  .overdue-badge { color:#dc3545; font-size:13px; font-weight:700; }
+  .overdue-badge { color:#dc3545; font-size:14px; font-weight:700; }
 </style>
 {% block extra_css %}{% endblock %}
 </head>

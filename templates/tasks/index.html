@@ -15,7 +15,7 @@
   <form method="GET" action="{{ url_for('tasks.index') }}" id="filterForm">
     <div class="row g-2 align-items-end">
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">屋苑</label>
+        <label class="form-label" style="font-size:13px;">屋苑</label>
         <select name="estate_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">全部屋苑</option>
           {% for e in estates %}
@@ -24,7 +24,7 @@
         </select>
       </div>
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">事項狀況</label>
+        <label class="form-label" style="font-size:13px;">事項狀況</label>
         <select name="status_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">全部狀況</option>
           {% for s in statuses %}
@@ -33,7 +33,7 @@
         </select>
       </div>
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">事項種類</label>
+        <label class="form-label" style="font-size:13px;">事項種類</label>
         <select name="category_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">全部種類</option>
           {% for c in categories %}
@@ -42,7 +42,7 @@
         </select>
       </div>
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">跟進人</label>
+        <label class="form-label" style="font-size:13px;">跟進人</label>
         <select name="assignee_id" class="form-select form-select-sm" onchange="this.form.submit()">
           <option value="">全部員工</option>
           {% for u in staff_list %}
@@ -51,12 +51,12 @@
         </select>
       </div>
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">新增日期（由）</label>
+        <label class="form-label" style="font-size:13px;">新增日期（由）</label>
         <input type="text" name="date_from" class="form-control form-control-sm datepicker"
                value="{{ f_date_from }}" placeholder="YYYY-MM-DD">
       </div>
       <div class="col-md-2 col-6">
-        <label class="form-label" style="font-size:11px;">新增日期（至）</label>
+        <label class="form-label" style="font-size:13px;">新增日期（至）</label>
         <input type="text" name="date_to" class="form-control form-control-sm datepicker"
                value="{{ f_date_to }}" placeholder="YYYY-MM-DD">
       </div>
@@ -73,7 +73,7 @@
         <div class="form-check form-check-inline">
           <input class="form-check-input" type="checkbox" name="overdue" value="1" id="cbOverdue"
                  {% if f_overdue == '1' %}checked{% endif %} onchange="this.form.submit()">
-          <label class="form-check-label text-danger" for="cbOverdue" style="font-size:12px;">
+          <label class="form-check-label text-danger" for="cbOverdue" style="font-size:14px;">
             <i class="fas fa-exclamation-triangle me-1"></i>只顯示逾期
           </label>
         </div>
@@ -140,12 +140,12 @@
           {% endif %}
         </td>
         <td>
-          <span class="badge bg-secondary" style="font-size:10px;">{{ task.estate.code }}</span>
+          <span class="badge bg-secondary" style="font-size:12px;">{{ task.estate.code }}</span>
         </td>
         <td style="max-width:250px;">
           <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ task.title }}</div>
           {% if task.latest_log %}
-          <small class="text-muted" style="font-size:11px;">
+          <small class="text-muted" style="font-size:13px;">
             最新：{{ task.latest_log.content[:50] }}{% if task.latest_log.content|length > 50 %}…{% endif %}
           </small>
           {% endif %}
@@ -167,7 +167,7 @@
         <td><small>{{ task.assignee.display_name if task.assignee else '—' }}</small></td>
         <td>
           <a href="{{ url_for('tasks.view_task', task_id=task.id) }}"
-             class="btn btn-xs btn-outline-primary" style="font-size:10px;padding:2px 7px;">
+             class="btn btn-xs btn-outline-primary" style="font-size:13px;padding:2px 7px;">
             <i class="fas fa-eye"></i>
           </a>
         </td>
@@ -196,29 +196,29 @@
     {% for task in k_tasks %}
     <div class="kanban-card" onclick="location.href='{{ url_for('tasks.view_task', task_id=task.id) }}'">
       <div class="d-flex justify-content-between align-items-start mb-1">
-        <span class="task-num" style="font-size:11px;">{{ task.task_number }}</span>
-        <span class="badge bg-secondary" style="font-size:9px;">{{ task.estate.code }}</span>
+        <span class="task-num" style="font-size:13px;">{{ task.task_number }}</span>
+        <span class="badge bg-secondary" style="font-size:11px;">{{ task.estate.code }}</span>
       </div>
-      <div style="font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:4px;
+      <div style="font-size:14px;font-weight:600;color:#2c3e50;margin-bottom:4px;
                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
         {{ task.title }}
       </div>
       <div class="d-flex justify-content-between align-items-center">
-        <small class="text-muted" style="font-size:10px;">{{ task.category.name_zh if task.category else '' }}</small>
+        <small class="text-muted" style="font-size:12px;">{{ task.category.name_zh if task.category else '' }}</small>
         {% if task.expected_done %}
-        <small class="{% if task.is_overdue %}text-danger fw-bold{% else %}text-muted{% endif %}" style="font-size:10px;">
+        <small class="{% if task.is_overdue %}text-danger fw-bold{% else %}text-muted{% endif %}" style="font-size:12px;">
           {{ task.expected_done.strftime('%m/%d') }}
         </small>
         {% endif %}
       </div>
       {% if task.assignee %}
       <div class="mt-1">
-        <span class="badge bg-light text-dark" style="font-size:10px;">{{ task.assignee.display_name }}</span>
+        <span class="badge bg-light text-dark" style="font-size:12px;">{{ task.assignee.display_name }}</span>
       </div>
       {% endif %}
     </div>
     {% else %}
-    <div class="text-muted text-center py-3" style="font-size:12px;">無事項</div>
+    <div class="text-muted text-center py-3" style="font-size:14px;">無事項</div>
     {% endfor %}
   </div>
   {% endfor %}
