@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block title %}系統說明書{% endblock %}
+
+{% block content %}
+<style>
+  .manual-wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 12px 60px;
+  }
+  .manual-header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2e86de 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 32px 36px;
+    margin-bottom: 32px;
+  }
+  .manual-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  .manual-header p {
+    margin: 0;
+    opacity: .85;
+    font-size: 15px;
+  }
+
+  /* TOC */
+  .toc-card {
+    background: #f0f6ff;
+    border: 1px solid #cce0ff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+  .toc-card h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a3a5c;
+    margin-bottom: 12px;
+  }
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    column-count: 2;
+    column-gap: 20px;
+  }
+  .toc-list li { margin-bottom: 6px; }
+  .toc-list a {
+    color: #2e86de;
+    text-decoration: none;
+    font-size: 15px;
+  }
+  .toc-list a:hover { text-decoration: underline; }
+
+  /* Sections */
+  .manual-section {
+    background: #fff;
+    border: 1px solid #e3e8f0;
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1a3a5c;
+    border-left: 4px solid #2e86de;
+    padding-left: 12px;
+    margin-bottom: 18px;
+    margin-top: 0;
+  }
+  .subsection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2e86de;
+    margin-top: 22px;
+    margin-bottom: 10px;
+  }
+  .manual-section p,
+  .manual-section li {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #333;
+  }
+  .manual-section ul,
+  .manual-section ol {
+    padding-left: 22px;
+    margin-bottom: 12px;
+  }
+
+  /* Role badges */
+  .role-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .role-admin   { background: #ffe0e0; color: #c0392b; }
+  .role-manager { background: #fff3cd; color: #856404; }
+  .role-staff   { background: #e0f0ff; color: #1565c0; }
+
+  /* Step table */
+  .step-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+  .step-table th {
+    background: #1a3a5c;
+    color: #fff;
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+  }
+  .step-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #e8ecf0;
+    vertical-align: top;
+  }
+  .step-table tr:last-child td { border-bottom: none; }
+  .step-table tr:nth-child(even) td { background: #f8fafd; }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    background: #2e86de;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* Info / tip boxes */
+  .tip-box {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+  .tip-blue  { background: #e8f4fd; border-left: 4px solid #2e86de; color: #1a3a5c; }
+  .tip-green { background: #e8f8f0; border-left: 4px solid #27ae60; color: #1a4a2e; }
+  .tip-amber { background: #fff8e1; border-left: 4px solid #f39c12; color: #5d4037; }
+
+  /* Status chips */
+  .chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 1px 2px;
+  }
+  .chip-new      { background: #cff4fc; color: #0c5460; }
+  .chip-progress { background: #fff3cd; color: #856404; }
+  .chip-done     { background: #d4edda; color: #155724; }
+  .chip-closed   { background: #e2e3e5; color: #383d41; }
+
+  @media (max-width: 600px) {
+    .toc-list { column-count: 1; }
+    .manual-section { padding: 18px 16px; }
+  }
+</style>
+
+<div class="manual-wrap">
+
+  <!-- Header -->
+  <div class="manual-header">
+    <h1><i class="fas fa-book-open me-2"></i>物業管理工作清單系統 — 使用說明書</h1>
+    <p>Property Management Working List System &nbsp;|&nbsp; 供全體員工參考</p>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc-card">
+    <h2><i class="fas fa-list me-2"></i>目錄</h2>
+    <ul class="toc-list">
+      <li><a href="#sec-overview">1. 系統概覽</a></li>
+      <li><a href="#sec-roles">2. 用戶角色與權限</a></li>
+      <li><a href="#sec-login">3. 登入系統</a></li>
+      <li><a href="#sec-dashboard">4. 儀表板</a></li>
+      <li><a href="#sec-tasks">5. 事項管理</a></li>
+      <li><a href="#sec-daily">6. 每日工作清單</a></li>
+      <li><a href="#sec-calendar">7. 工作日曆</a></li>
+      <li><a href="#sec-reports">8. 報告功能</a></li>
+      <li><a href="#sec-admin">9. 管理設定</a></li>
+      <li><a href="#sec-tips">10. 使用貼士</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. Overview -->
+  <div class="manual-section" id="sec-overview">
+    <h2 class="section-title">1. 系統概覽</h2>
+    <p>
+      本系統是為物業管理團隊度身設計的工作追蹤平台，協助各員工及主管有效管理旗下多個屋苑的日常工作事項。
+    </p>
+    <ul>
+      <li>集中管理多個屋苑的工作事項，一目了然</li>
+      <li>每日工作清單讓員工清楚知道今天需要跟進哪些事項</li>
+      <li>完整的跟進記錄（Activity Log），記錄每一個處理步驟</li>
+      <li>支援附件上傳（圖片、文件、PDF、Outlook 郵件等）</li>
+      <li>主管可透過儀表板掌握整體狀況及逾期事項</li>
+      <li>工作日曆提供視覺化時間軸，方便排期規劃</li>
+    </ul>
+    <div class="tip-box tip-blue">
+      <i class="fas fa-info-circle me-1"></i>
+      <strong>系統網址：</strong> <a href="http://antonychoi.pythonanywhere.com" target="_blank">antonychoi.pythonanywhere.com</a>
+      &nbsp;（建議使用 Chrome 或 Edge 瀏覽器）
+    </div>
+  </div>
+
+  <!-- 2. Roles -->
+  <div class="manual-section" id="sec-roles">
+    <h2 class="section-title">2. 用戶角色與權限</h2>
+    <p>系統設有三個角色層級，權限由高至低：</p>
+    <table class="step-table">
+      <thead>
+        <tr>
+          <th>角色</th>
+          <th>可執行操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="role-badge role-admin">管理員</span></td>
+          <td>
+            全部功能，包括：新增 / 刪除用戶、管理屋苑、設定事項種類及狀況、查看所有人記錄、匯入數據
+          </td>
+        </tr>
+        <tr>
+          <td><span class="role-badge role-manager">主管</span></td>
+          <td>
+            新增及編輯事項、指派員工、查看所有屋苑報告、管理用戶（限本屋苑）、查看儀表板統計
+          </td>
+        </tr>
+        <tr>
+          <td><span class="role-badge role-staff">員工</span></td>
+          <td>
+            查看及更新自己負責的事項、新增跟進記錄、管理個人每日工作清單、上傳附件
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="tip-box tip-amber">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+      員工只能看到自己被指派的事項；主管及管理員可查看所有事項。
+    </div>
+  </div>
+
+  <!-- 3. Login -->
+  <div class="manual-section" id="sec-login">
+    <h2 class="section-title">3. 登入系統</h2>
+    <h3 class="subsection-title">登入步驟</h3>
+    <table class="step-table">
+      <tbody>
+        <tr><td style="width:36px"><span class="step-num">1</span></td><td>開啟瀏覽器，前往系統網址</td></tr>
+        <tr><td><span class="step-num">2</span></td><td>輸入你的<strong>用戶名稱</strong>及<strong>密碼</strong>（由管理員提供）</td></tr>
+        <tr><td><span class="step-num">3</span></td><td>按「登入」按鈕</td></tr>
+        <tr><td><span class="step-num">4</span></td><td>成功後自動跳轉至儀表板</td></tr>
+      </tbody>
+    </table>
+    <div class="tip-box tip-green">
+      <i class="fas fa-lightbulb me-1"></i>
+      <strong>共用電腦提示：</strong>每個瀏覽器分頁擁有獨立登入狀態，使用完畢請按右下角「登出」，避免下一位同事看到你的資料。
+    </div>
+  </div>
+
+  <!-- 4. Dashboard -->
+  <div class="manual-section" id="sec-dashboard">
+    <h2 class="section-title">4. 儀表板</h2>
+    <p>登入後的首頁，顯示整體工作狀況摘要。</p>
+    <h3 class="subsection-title">主要資訊</h3>
+    <ul>
+      <li><strong>統計卡片</strong>：顯示今日新增、進行中、逾期及本月完成事項數量</li>
+      <li><strong>逾期警示</strong>：列出所有已超過到期日但尚未完成的事項，按屋苑顯示</li>
+      <li><strong>各屋苑事項分佈</strong>：以圖表呈現各屋苑事項比例</li>
+      <li><strong>員工工作量統計</strong>：顯示各員工目前負責的進行中事項數量</li>
+      <li><strong>最新跟進記錄</strong>：顯示最近的 Activity Log 條目</li>
+    </ul>
+    <div class="tip-box tip-blue">
+      <i class="fas fa-info-circle me-1"></i>
+      主管及管理員可看到全部屋苑數據；員工只看到自己負責的事項統計。
+    </div>
+  </div>
+
+  <!-- 5. Tasks -->
+  <div class="manual-section" id="sec-tasks">
+    <h2 class="section-title">5. 事項管理</h2>
+
+    <h3 class="subsection-title">5.1 新增事項</h3>
+    <table class="step-table">
+      <tbody>
+        <tr><td style="width:36px"><span class="step-num">1</span></td><td>點選左側「<strong>新增事項</strong>」</td></tr>
+        <tr><td><span class="step-num">2</span></td><td>填寫事項標題（必填）、選擇所屬屋苑、種類、優先級及到期日</td></tr>
+        <tr><td><span class="step-num">3</span></td><td>在「指派跟進人員」欄位選擇負責員工（可多選）</td></tr>
+        <tr><td><span class="step-num">4</span></td><td>填寫描述（可選），按「儲存」完成新增</td></tr>
+      </tbody>
+    </table>
+    <p>系統會自動生成事項編號（如 <code>ALS-2025-001</code>），格式為「屋苑代碼—年份—流水號」。</p>
+
+    <h3 class="subsection-title">5.2 事項狀況流程</h3>
+    <p>每個事項依照以下流程推進：</p>
+    <div style="margin: 10px 0 14px;">
+      <span class="chip chip-new">新增</span>
+      <i class="fas fa-arrow-right" style="color:#aaa;margin:0 6px;font-size:13px;"></i>
+      <span class="chip chip-progress">跟進中</span>
+      <i class="fas fa-arrow-right" style="color:#aaa;margin:0 6px;font-size:13px;"></i>
+      <span class="chip chip-done">完成</span>
+      <i class="fas fa-arrow-right" style="color:#aaa;margin:0 6px;font-size:13px;"></i>
+      <span class="chip chip-closed">已完成</span>
+    </div>
+    <ul>
+      <li><strong>新增</strong>：剛建立，尚未開始處理</li>
+      <li><strong>跟進中</strong>：正在處理中</li>
+      <li><strong>完成</strong>：工作完成，等待主管確認</li>
+      <li><strong>已完成</strong>：主管確認完結，事項存檔</li>
+    </ul>
+
+    <h3 class="subsection-title">5.3 事項詳情頁</h3>
+    <p>點擊任何事項編號或標題即可進入詳情頁，包含：</p>
+    <ul>
+      <li><strong>基本資料</strong>：屋苑、種類、優先級、到期日、負責人員</li>
+      <li><strong>描述</strong>：事項的詳細說明</li>
+      <li><strong>跟進記錄（Activity Log）</strong>：所有歷史操作及備註，可新增跟進記錄</li>
+      <li><strong>附件</strong>：上傳相關文件、圖片或郵件（支援 .pdf、.jpg、.png、.docx、.msg、.eml 等格式）</li>
+    </ul>
+
+    <h3 class="subsection-title">5.4 新增跟進記錄</h3>
+    <table class="step-table">
+      <tbody>
+        <tr><td style="width:36px"><span class="step-num">1</span></td><td>進入事項詳情頁</td></tr>
+        <tr><td><span class="step-num">2</span></td><td>在「新增跟進記錄」文字框輸入內容（如：「已聯絡承辦商，預計下週到場」）</td></tr>
+        <tr><td><span class="step-num">3</span></td><td>如需要，同時更新事項狀況</td></tr>
+        <tr><td><span class="step-num">4</span></td><td>按「儲存記錄」完成</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="subsection-title">5.5 事項清單視圖</h3>
+    <p>左側選單「事項清單」提供兩種視圖：</p>
+    <ul>
+      <li><strong>列表視圖</strong>：表格形式，可按屋苑、狀況、優先級篩選</li>
+      <li><strong>看板視圖</strong>：以欄位形式展示各狀況的事項，直觀拖拉管理</li>
+    </ul>
+  </div>
+
+  <!-- 6. Daily -->
+  <div class="manual-section" id="sec-daily">
+    <h2 class="section-title">6. 每日工作清單</h2>
+    <p>
+      每日工作清單是員工的個人工作管家，幫助你整理今天需要處理的事項。
+    </p>
+
+    <h3 class="subsection-title">6.1 加入每日清單</h3>
+    <table class="step-table">
+      <tbody>
+        <tr><td style="width:36px"><span class="step-num">1</span></td><td>點選左側「<strong>每日工作清單</strong>」</td></tr>
+        <tr><td><span class="step-num">2</span></td><td>按右上角「<strong>＋ 從事項加入</strong>」按鈕</td></tr>
+        <tr><td><span class="step-num">3</span></td><td>從彈出清單中選擇你負責的事項，按「加入今日清單」</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="subsection-title">6.2 記錄今日工作</h3>
+    <ul>
+      <li>點擊清單中任一事項，彈出編輯視窗</li>
+      <li>在「今日備註」欄位輸入當天的工作內容或進度</li>
+      <li>完成後勾選「標記為完成」，該事項會顯示為已完成狀態</li>
+      <li>按「✏️ 事項編號」按鈕可直接跳轉至事項主頁面，新增正式跟進記錄</li>
+    </ul>
+
+    <h3 class="subsection-title">6.3 清單分組顯示</h3>
+    <p>每日工作清單會自動按以下方式分組顯示：</p>
+    <ul>
+      <li><strong>待處理</strong>：今日未完成的事項</li>
+      <li><strong>已完成</strong>：今日已標記為完成的事項</li>
+    </ul>
+    <div class="tip-box tip-amber">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+      每日清單每天重置，昨日的記錄不會自動延續至今天。如需繼續跟進，請重新加入清單。
+    </div>
+  </div>
+
+  <!-- 7. Calendar -->
+  <div class="manual-section" id="sec-calendar">
+    <h2 class="section-title">7. 工作日曆</h2>
+    <p>
+      工作日曆以月曆形式顯示所有有到期日的事項，方便規劃及跟進時間表。
+    </p>
+    <ul>
+      <li>每個日期格子內顯示當天到期的事項數量及名稱</li>
+      <li>可按屋苑篩選，只顯示指定屋苑的事項</li>
+      <li>點擊事項可直接跳轉至事項詳情頁</li>
+      <li>逾期未完成的事項會以紅色標示</li>
+    </ul>
+    <div class="tip-box tip-blue">
+      <i class="fas fa-info-circle me-1"></i>
+      建議主管定期查看工作日曆，確保所有到期事項均有人跟進。
+    </div>
+  </div>
+
+  <!-- 8. Reports -->
+  <div class="manual-section" id="sec-reports">
+    <h2 class="section-title">8. 報告功能</h2>
+
+    <h3 class="subsection-title">8.1 生成報告</h3>
+    <p>點選左側「<strong>生成報告</strong>」，可匯出以下報告：</p>
+    <ul>
+      <li><strong>事項報告</strong>：按屋苑、日期範圍、狀況篩選，匯出 Excel 格式</li>
+      <li>報告包含事項編號、標題、屋苑、種類、優先級、負責人、到期日、狀況等資訊</li>
+    </ul>
+
+    <h3 class="subsection-title">8.2 匯入數據（主管 / 管理員）</h3>
+    <p>支援從 Excel 檔案批量匯入事項，適合系統初始化或大量資料遷移時使用。</p>
+    <div class="tip-box tip-amber">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+      匯入前請確保 Excel 格式符合系統要求，如不確定請聯絡管理員。
+    </div>
+  </div>
+
+  <!-- 9. Admin -->
+  <div class="manual-section" id="sec-admin">
+    <h2 class="section-title">9. 管理設定（主管 / 管理員）</h2>
+    <p>「管理設定」部分只對主管及管理員顯示，包含以下功能：</p>
+
+    <h3 class="subsection-title">9.1 屋苑管理（管理員）</h3>
+    <ul>
+      <li>新增、編輯、啟用 / 停用屋苑</li>
+      <li>每個屋苑有中英文名稱及代碼（用於自動生成事項編號）</li>
+    </ul>
+
+    <h3 class="subsection-title">9.2 用戶管理</h3>
+    <ul>
+      <li>新增用戶：填寫用戶名稱、顯示名稱、角色，系統會自動設定初始密碼</li>
+      <li>編輯用戶資料及角色</li>
+      <li>停用用戶（停用後該用戶無法登入）</li>
+      <li>指派用戶至所屬屋苑</li>
+    </ul>
+
+    <h3 class="subsection-title">9.3 事項種類</h3>
+    <ul>
+      <li>管理事項的分類標籤（如：工程、投訴、財務等）</li>
+      <li>可新增、編輯或調整排列順序</li>
+    </ul>
+
+    <h3 class="subsection-title">9.4 事項狀況</h3>
+    <ul>
+      <li>管理事項的狀況標籤（如：新增、跟進中、完成、已完成）</li>
+      <li>可設定哪個狀況為「完結」狀態（Terminal），完結狀態的事項不會在逾期警示中顯示</li>
+    </ul>
+
+    <h3 class="subsection-title">9.5 工作流程範本</h3>
+    <ul>
+      <li>預設常用工作流程的待辦事項清單（例如：新居入伙流程、裝修申請流程）</li>
+      <li>新增事項時可套用範本，自動生成標準化工作步驟</li>
+    </ul>
+  </div>
+
+  <!-- 10. Tips -->
+  <div class="manual-section" id="sec-tips">
+    <h2 class="section-title">10. 使用貼士</h2>
+
+    <h3 class="subsection-title">日常工作建議流程</h3>
+    <ol>
+      <li>每天上班後，先查看<strong>儀表板</strong>，了解逾期及今日需處理事項</li>
+      <li>進入<strong>每日工作清單</strong>，將今天需跟進的事項加入清單</li>
+      <li>逐一跟進事項，在<strong>事項詳情頁</strong>新增跟進記錄</li>
+      <li>完成後在每日清單中標記為完成</li>
+      <li>下班前再次檢視儀表板，確認所有緊急事項已妥善處理</li>
+    </ol>
+
+    <h3 class="subsection-title">常見問題</h3>
+    <table class="step-table">
+      <thead>
+        <tr><th>問題</th><th>解決方法</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>登入後看不到某些事項</td>
+          <td>員工只能看到自己被指派的事項，如需查看請聯絡主管</td>
+        </tr>
+        <tr>
+          <td>無法更改事項狀況</td>
+          <td>確認你已被指派為負責人，或聯絡主管協助</td>
+        </tr>
+        <tr>
+          <td>附件上傳失敗</td>
+          <td>檔案大小上限為 20MB，請確認格式（jpg/png/pdf/docx/msg/eml）</td>
+        </tr>
+        <tr>
+          <td>每日清單消失了</td>
+          <td>每日清單每天重置，昨天的記錄需重新加入</td>
+        </tr>
+        <tr>
+          <td>忘記密碼</td>
+          <td>聯絡管理員重設密碼</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip-box tip-green" style="margin-top:20px">
+      <i class="fas fa-headset me-1"></i>
+      <strong>技術支援：</strong>如遇系統問題，請聯絡系統管理員，並盡量提供截圖及問題說明，以便快速協助。
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;color:#aaa;font-size:13px;margin-top:16px;">
+    物業管理工作清單系統 &nbsp;·&nbsp; 說明書版本 v1.0 &nbsp;·&nbsp; 如有疑問請聯絡系統管理員
+  </div>
+
+</div>
+{% endblock %}
