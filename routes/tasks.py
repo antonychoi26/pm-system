@@ -43,6 +43,7 @@ def index():
     f_date_to  = request.args.get('date_to', '')
     f_keyword  = request.args.get('keyword', '').strip()
     f_overdue  = request.args.get('overdue', '')
+    f_hide_done= request.args.get('hide_done', '')
     f_view     = request.args.get('view', 'list')   # list | kanban
 
     if f_estate:
@@ -80,6 +81,11 @@ def index():
             Task.expected_done < today
         )
 
+    if f_hide_done == '1':
+        done_ids = [s.id for s in TaskStatus.query.filter_by(is_terminal=True).all()]
+        if done_ids:
+            q = q.filter(~Task.status_id.in_(done_ids))
+
     tasks = q.order_by(Task.created_at.desc()).all()
 
     # ── Sidebar data ──────────────────────────────────────────────────
@@ -103,7 +109,7 @@ def index():
         kanban_groups=kanban_groups,
         f_estate=f_estate, f_status=f_status, f_category=f_category,
         f_staff=f_staff, f_date_from=f_date_from, f_date_to=f_date_to,
-        f_keyword=f_keyword, f_overdue=f_overdue, f_view=f_view,
+        f_keyword=f_keyword, f_overdue=f_overdue, f_hide_done=f_hide_done, f_view=f_view,
     )
 
 
