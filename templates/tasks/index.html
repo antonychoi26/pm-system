@@ -78,8 +78,10 @@
           </label>
         </div>
         <div class="form-check form-check-inline">
+          {# 勾選框必須放在隱藏欄位之前：勾選時送出 1（優先），取消勾選時只送出 0 #}
           <input class="form-check-input" type="checkbox" name="hide_done" value="1" id="cbHideDone"
-                 {% if f_hide_done == '1' %}checked{% endif %} onchange="this.form.submit()">
+                 {% if f_hide_done == '1' and not f_status %}checked{% endif %} onchange="this.form.submit()">
+          <input type="hidden" name="hide_done" value="0">
           <label class="form-check-label text-secondary" for="cbHideDone" style="font-size:14px;">
             <i class="fas fa-eye-slash me-1"></i>不顯示「已完成」
           </label>

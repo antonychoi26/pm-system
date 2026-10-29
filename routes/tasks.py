@@ -43,7 +43,8 @@ def index():
     f_date_to  = request.args.get('date_to', '')
     f_keyword  = request.args.get('keyword', '').strip()
     f_overdue  = request.args.get('overdue', '')
-    f_hide_done= request.args.get('hide_done', '')
+    # 預設不顯示「已完成」：網址沒有 hide_done 參數時視為 '1'；用戶取消勾選會送出 '0'
+    f_hide_done= request.args.get('hide_done', '1')
     f_view     = request.args.get('view', 'list')   # list | kanban
 
     if f_estate:
@@ -81,7 +82,8 @@ def index():
             Task.expected_done < today
         )
 
-    if f_hide_done == '1':
+    # 若用戶已特別選了某個「事項狀況」，就尊重該選擇，不再自動隱藏已完成
+    if f_hide_done == '1' and not f_status:
         done_ids = [s.id for s in TaskStatus.query.filter_by(is_terminal=True).all()]
         if done_ids:
             q = q.filter(~Task.status_id.in_(done_ids))
