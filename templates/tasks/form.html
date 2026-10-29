@@ -144,7 +144,8 @@
     <input type="file" name="log_attachments" class="form-control form-control-sm"
            multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.msg,.eml">
     <div class="form-text text-muted" style="font-size:11px;">
-      支援：PDF、Word、PPT、Excel、JPEG、PNG｜每次最多 20MB
+      支援：PDF、Word、PPT、Excel、JPEG、PNG、<strong>Outlook 郵件（.msg）</strong>、電郵（.eml）｜每次最多 20MB<br>
+      <i class="fas fa-envelope me-1"></i>可將整封電郵從 Outlook 拖曳到此欄，或先「另存新檔」為 .msg 再上傳
     </div>
   </div>
   {% endif %}
@@ -158,7 +159,8 @@
     <input type="file" name="task_attachments" class="form-control form-control-sm"
            multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.msg,.eml">
     <div class="form-text text-muted" style="font-size:11px;">
-      支援：PDF、Word、PPT、Excel、JPEG、PNG｜每次最多 20MB
+      支援：PDF、Word、PPT、Excel、JPEG、PNG、<strong>Outlook 郵件（.msg）</strong>、電郵（.eml）｜每次最多 20MB<br>
+      <i class="fas fa-envelope me-1"></i>可將整封電郵從 Outlook 拖曳到此欄，或先「另存新檔」為 .msg 再上傳
     </div>
     {% if mode == 'edit' and task %}
     {% set task_atts = task.attachments.filter_by(log_id=None).all() %}
