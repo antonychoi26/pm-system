@@ -100,68 +100,6 @@
     </div>
 
     <hr class="my-3">
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label">選擇屋苑（留空 = 全部）</label>
-        <div class="row g-2">
-          {% for e in estates %}
-          <div class="col-md-3 col-6">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="estate_ids"
-                     value="{{ e.id }}" id="re_{{ e.id }}">
-              <label class="form-check-label" for="re_{{ e.id }}" style="font-size:13px;">
-                <span class="badge bg-secondary me-1" style="font-size:10px;">{{ e.code }}</span>
-                {{ e.name_zh }}
-              </label>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="mt-2">
-          <button type="button" class="btn btn-xs btn-outline-secondary" style="font-size:11px;"
-                  onclick="document.querySelectorAll('input[name=estate_ids]').forEach(cb=>cb.checked=true)">
-            全選
-          </button>
-          <button type="button" class="btn btn-xs btn-outline-secondary ms-1" style="font-size:11px;"
-                  onclick="document.querySelectorAll('input[name=estate_ids]').forEach(cb=>cb.checked=false)">
-            全不選
-          </button>
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <label class="form-label">事項狀況篩選（留空 = 跟進中 + 完成）</label>
-        <div class="d-flex flex-wrap gap-2">
-          {% for s in statuses %}
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="status_ids"
-                   value="{{ s.id }}" id="rs_{{ s.id }}">
-            <label class="form-check-label" for="rs_{{ s.id }}">
-              <span class="badge bg-{{ s.color }}" style="font-size:11px;">{{ s.name_zh }}</span>
-            </label>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">其他選項</label>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="include_terminal" id="incTerminal">
-          <label class="form-check-label" for="incTerminal" style="font-size:13px;">
-            包含「已完成（終止）」事項
-          </label>
-        </div>
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" name="logs_in_range_only" id="logsInRangeOnly" value="1">
-          <label class="form-check-label" for="logsInRangeOnly" style="font-size:13px;">
-            只顯示期間內記錄
-            <span class="text-muted">（不勾選 = 列出事項的全部跟進記錄；需先設定日期範圍）</span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <hr class="my-3">
     <div class="d-flex gap-2 flex-wrap">
       <button type="submit" name="format" value="html" class="btn btn-primary">
         <i class="fas fa-eye me-1"></i>預覽報告
