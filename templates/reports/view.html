@@ -114,7 +114,7 @@
           <td>{{ task.assignee.display_name if task.assignee else '' }}</td>
         </tr>
         {% else %}
-        {% for i, log in logs | enumerate %}
+        {% for i, log in enumerate(logs) %}
         <tr class="{% if i == 0 %}task-row {{ status_class }}{% else %}log-row{% endif %}">
           {% if i == 0 %}
           <td>{{ task.task_number }}</td>

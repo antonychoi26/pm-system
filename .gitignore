@@ -9,3 +9,5 @@ logs/
 dist/
 build/
 .DS_Store
+flask_sessions/
+uploads/
