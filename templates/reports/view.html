@@ -32,6 +32,7 @@
 .report-table td { padding:7px 10px; border:1px solid #dee2e6; vertical-align:top; }
 .report-table tr.task-row td { font-weight:600; }
 .report-table tr.log-row td { background:#fafafa; }
+.report-table td.log-hl { background:#ffff00 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .status-new      { background:#d0ecf7 !important; }
 .status-progress { background:#fff3cd !important; }
 .status-done     { background:#d4edda !important; }
@@ -57,6 +58,13 @@
       </div>
     </div>
   </div>
+
+  {% if log_mode == 'highlight' and f_date_from or log_mode == 'highlight' and f_date_to %}
+  <div class="mb-2" style="font-size:12px;">
+    <span class="log-hl-legend" style="background:#ffff00;padding:1px 8px;border:1px solid #ccc;">黃色</span>
+    = 指定期間（{{ f_date_from or '…' }} — {{ f_date_to or '…' }}）內的跟進記錄
+  </div>
+  {% endif %}
 
   {% if not sorted_groups %}
   <div class="section-card text-center py-5">
@@ -125,8 +133,9 @@
           {% else %}
           <td></td><td></td><td></td><td></td><td></td>
           {% endif %}
-          <td>{{ log.log_date.strftime('%d/%m/%Y') }}</td>
-          <td style="white-space:pre-wrap;">{{ log.content }}</td>
+          {% set is_hl = log.id in item.hl_ids %}
+          <td{% if is_hl %} class="log-hl"{% endif %}>{{ log.log_date.strftime('%d/%m/%Y') }}</td>
+          <td class="{% if is_hl %}log-hl{% endif %}" style="white-space:pre-wrap;">{{ log.content }}</td>
           {% if i == 0 %}
           <td>{{ task.expected_done.strftime('%d/%m/%Y') if task.expected_done else '' }}</td>
           <td>{{ task.assignee.display_name if task.assignee else '' }}</td>

@@ -10,6 +10,9 @@ from openpyxl.utils import get_column_letter
 
 reports_bp = Blueprint('reports', __name__)
 
+# 「期間內記錄」的黃色標示（Excel）
+HIGHLIGHT_FILL = PatternFill('solid', fgColor='FFFF00')
+
 
 def get_accessible_estate_ids():
     if current_user.is_admin:
@@ -58,7 +61,13 @@ def generate():
     f_date_from  = request.args.get('date_from', '')
     f_date_to    = request.args.get('date_to', '')
     f_include_terminal = bool(request.args.get('include_terminal'))
-    f_logs_in_range_only = bool(request.args.get('logs_in_range_only'))
+    # 跟進記錄顯示方式：all = 全部（預設）｜range = 只顯示期間內｜highlight = 全部，期間內黃色標示
+    f_log_mode = request.args.get('log_mode', '')
+    if f_log_mode not in ('all', 'range', 'highlight'):
+        # 相容舊版參數 logs_in_range_only=1
+        f_log_mode = 'range' if request.args.get('logs_in_range_only') else 'all'
+    _d_from = _parse_ymd(f_date_from)
+    _d_to   = _parse_ymd(f_date_to)
     report_title = request.args.get('title', '屋苑每週事項跟進報告')
 
     # Scope to accessible estates
@@ -115,24 +124,26 @@ def generate():
         if est not in estate_groups:
             estate_groups[est] = []
 
-        # 列出該事項的「全部」跟進記錄，按跟進日期由先到後排序
+        # 該事項的「全部」跟進記錄，按跟進日期由先到後排序
         # （預設日期範圍只決定哪些事項入報告，不刪減記錄）
         logs_q = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc(), TaskLog.id.asc())
-        # 勾選「只顯示期間內記錄」時，才按日期範圍刪減記錄
-        if f_logs_in_range_only:
-            if f_date_from:
-                try:
-                    logs_q = logs_q.filter(TaskLog.log_date >= datetime.strptime(f_date_from, '%Y-%m-%d').date())
-                except ValueError:
-                    pass
-            if f_date_to:
-                try:
-                    logs_q = logs_q.filter(TaskLog.log_date <= datetime.strptime(f_date_to, '%Y-%m-%d').date())
-                except ValueError:
-                    pass
+        if f_log_mode == 'range':
+            # 只顯示期間內記錄
+            if _d_from:
+                logs_q = logs_q.filter(TaskLog.log_date >= _d_from)
+            if _d_to:
+                logs_q = logs_q.filter(TaskLog.log_date <= _d_to)
         logs = logs_q.all()
 
-        estate_groups[est].append({'task': task, 'logs': logs})
+        # 「全部記錄 + 黃色標示」：記下哪些記錄落在指定期間內
+        hl_ids = set()
+        if f_log_mode == 'highlight' and (_d_from or _d_to):
+            for lg in logs:
+                if lg.log_date and (not _d_from or lg.log_date >= _d_from) \
+                        and (not _d_to or lg.log_date <= _d_to):
+                    hl_ids.add(lg.id)
+
+        estate_groups[est].append({'task': task, 'logs': logs, 'hl_ids': hl_ids})
 
     # Sort estates by code
     sorted_groups = sorted(estate_groups.items(), key=lambda x: x[0].code)
@@ -161,7 +172,16 @@ def generate():
         f_date_to=f_date_to,
         week_num=week_num,
         ref_date=ref_date,
+        log_mode=f_log_mode,
     )
+
+
+def _parse_ymd(value):
+    """'YYYY-MM-DD' -> date；格式不正確或空白則回傳 None。"""
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date() if value else None
+    except ValueError:
+        return None
 
 
 def _get_task_ids_with_logs_in_range(date_from, date_to):
@@ -284,6 +304,8 @@ def _export_excel(sorted_groups, title, date_from, date_to):
                     for col in range(1, 10):
                         c = ws.cell(row=row, column=col)
                         c.fill = task_fill if i == 0 else PatternFill('solid', fgColor='F5F5F5')
+                        if log.id in item.get('hl_ids', ()) and col in (6, 7):
+                            c.fill = HIGHLIGHT_FILL   # 期間內記錄：黃色標示
                         c.border = border
                         c.alignment = wrap_align
                     row += 1
@@ -372,6 +394,8 @@ def _add_master_sheet(wb, sorted_groups, title):
                     for col in range(1, 11):
                         c = ws.cell(row=row, column=col)
                         c.fill = rfill; c.border = border; c.alignment = wrap_align
+                        if log.id in item.get('hl_ids', ()) and col in (7, 8):
+                            c.fill = HIGHLIGHT_FILL   # 期間內記錄：黃色標示
                     row += 1
 
     ws.freeze_panes = 'A4'
