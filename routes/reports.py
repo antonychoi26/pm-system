@@ -93,7 +93,16 @@ def generate():
             except ValueError:
                 pass
         create_ids = [t.id for t in create_q.all()]
-        all_ids = list(set(log_task_ids + create_ids))
+        # 逾期未完成的事項（預計完成日期已過、狀況非終止）一律列入報告，
+        # 不論該期間內有沒有跟進記錄，避免逾期事項在週報中消失。
+        terminal_status_ids = [s.id for s in TaskStatus.query.filter_by(is_terminal=True).all()]
+        overdue_q = Task.query.filter(
+            Task.estate_id.in_(scope_ids), Task.is_active == True,
+            Task.expected_done.isnot(None), Task.expected_done < date.today())
+        if terminal_status_ids:
+            overdue_q = overdue_q.filter(~Task.status_id.in_(terminal_status_ids))
+        overdue_ids = [t.id for t in overdue_q.all()]
+        all_ids = list(set(log_task_ids + create_ids + overdue_ids))
         q = q.filter(Task.id.in_(all_ids))
 
     tasks = q.order_by(Task.estate_id, Task.created_at).all()
