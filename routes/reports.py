@@ -58,6 +58,7 @@ def generate():
     f_date_from  = request.args.get('date_from', '')
     f_date_to    = request.args.get('date_to', '')
     f_include_terminal = bool(request.args.get('include_terminal'))
+    f_logs_in_range_only = bool(request.args.get('logs_in_range_only'))
     report_title = request.args.get('title', '屋苑每週事項跟進報告')
 
     # Scope to accessible estates
@@ -115,8 +116,21 @@ def generate():
             estate_groups[est] = []
 
         # 列出該事項的「全部」跟進記錄，按跟進日期由先到後排序
-        # （日期範圍只用來決定哪些事項入報告，不刪減記錄）
-        logs = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc(), TaskLog.id.asc()).all()
+        # （預設日期範圍只決定哪些事項入報告，不刪減記錄）
+        logs_q = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc(), TaskLog.id.asc())
+        # 勾選「只顯示期間內記錄」時，才按日期範圍刪減記錄
+        if f_logs_in_range_only:
+            if f_date_from:
+                try:
+                    logs_q = logs_q.filter(TaskLog.log_date >= datetime.strptime(f_date_from, '%Y-%m-%d').date())
+                except ValueError:
+                    pass
+            if f_date_to:
+                try:
+                    logs_q = logs_q.filter(TaskLog.log_date <= datetime.strptime(f_date_to, '%Y-%m-%d').date())
+                except ValueError:
+                    pass
+        logs = logs_q.all()
 
         estate_groups[est].append({'task': task, 'logs': logs})
 

@@ -78,6 +78,13 @@
             包含「已完成（終止）」事項
           </label>
         </div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="logs_in_range_only" id="logsInRangeOnly" value="1">
+          <label class="form-check-label" for="logsInRangeOnly" style="font-size:13px;">
+            只顯示期間內記錄
+            <span class="text-muted">（不勾選 = 列出事項的全部跟進記錄；需先設定日期範圍）</span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -99,7 +106,7 @@
     <h6><i class="fas fa-info-circle me-2 text-info"></i>報告說明</h6>
     <ul style="font-size:13px;" class="ps-3">
       <li class="mb-2">預設顯示<strong>非終止狀態</strong>的事項（即「新增」、「跟進中」、「完成」）</li>
-      <li class="mb-2">選擇日期範圍後，報告顯示該期間內有跟進記錄或新增的事項，每個事項會列出<strong>全部跟進記錄</strong>（按日期由先到後）；<strong>逾期未完成的事項（預計完成日期已過）不論日期範圍，一律列出</strong></li>
+      <li class="mb-2">選擇日期範圍後，報告顯示該期間內有跟進記錄或新增的事項，每個事項預設列出<strong>全部跟進記錄</strong>（按日期由先到後），勾選「只顯示期間內記錄」則只列出該日期範圍內的記錄；<strong>逾期未完成的事項（預計完成日期已過）不論日期範圍，一律列出</strong></li>
       <li class="mb-2">「完成」狀態事項會在下次報告轉為「已完成」後消失，方便主管知悉剛完成的工作</li>
       <li class="mb-2">匯出 Excel 格式與原有週報格式一致，可直接傳送予上司</li>
     </ul>
