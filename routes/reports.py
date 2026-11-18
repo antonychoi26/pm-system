@@ -114,24 +114,9 @@ def generate():
         if est not in estate_groups:
             estate_groups[est] = []
 
-        # Filter logs in date range
-        logs_q = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc())
-        if f_date_from or f_date_to:
-            if f_date_from:
-                try:
-                    logs_q = logs_q.filter(TaskLog.log_date >= datetime.strptime(f_date_from, '%Y-%m-%d').date())
-                except ValueError:
-                    pass
-            if f_date_to:
-                try:
-                    logs_q = logs_q.filter(TaskLog.log_date <= datetime.strptime(f_date_to, '%Y-%m-%d').date())
-                except ValueError:
-                    pass
-        logs = logs_q.all()
-
-        # Show all logs if no date filter
-        if not f_date_from and not f_date_to:
-            logs = task.logs.order_by(TaskLog.log_date.asc()).all()
+        # 列出該事項的「全部」跟進記錄，按跟進日期由先到後排序
+        # （日期範圍只用來決定哪些事項入報告，不刪減記錄）
+        logs = task.logs.order_by(TaskLog.log_date.asc(), TaskLog.created_at.asc(), TaskLog.id.asc()).all()
 
         estate_groups[est].append({'task': task, 'logs': logs})
 
